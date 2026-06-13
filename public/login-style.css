@@ -1,0 +1,193 @@
+
+body{
+    font-family: "Circular", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-image: url("/assets/back-img.jpg");
+    background-size: cover;
+    background-position:center;
+    background-attachment: fixed;
+    display: flex;
+    justify-content: center;
+    padding:25px;
+    padding-top: 32px;
+}
+
+@keyframes widthAnimate {
+  0%{padding:0;}
+}
+.upper-body-heading{
+    color:white;
+    margin-bottom: 12px;
+}
+.Heading{
+    letter-spacing: -1px;
+    font-weight: bold;
+    font-size: 2rem;
+}
+.img-big{
+    width:25px;
+    margin-right:37px;
+    height:25px;
+}
+.btn-form{
+    display: inline-flex;
+    align-items: flex-start;
+}
+.img-small{
+    margin-right:31px;
+    width:24px;
+    height:24px;
+}
+
+.main-body{
+    display:flex;
+    flex-direction: column;
+    width: 45.7rem;
+    height:50rem;
+    justify-content: flex-start;
+    border-radius: 8px;
+    align-items: center;
+    align-content: flex-start;
+    background-color: #141313;
+}
+
+.btn-dark{
+    border:0.3px solid rgb(96, 95, 95) !important;
+    margin-bottom: 8px;
+    width:324px;
+    height:48px;
+    background-color: #141313 !important;
+    font-size: 17px !important;
+    font-weight:400 !important;
+    padding:7px 31px;
+    border-radius: 25px !important;
+}
+
+.btn-dark:hover{
+    border:0.3px solid white !important;
+}
+.upper-body-btns{
+    display:flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.spotify-logo{
+    display: inline-block;
+    margin-top:1.8rem;
+    width:2.3rem;
+    height: 2.4rem;
+}
+
+.divider{
+    margin-top:32px;
+    margin-bottom:32px;
+    margin-left:100px;
+    margin-right:100px;
+    display: inline-flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: nowrap;
+    align-content: center;
+}
+.divider-line{
+    width:534px;
+    height:0.5px;
+    background-color: #9b9b9b;
+}
+
+.lower-body-inputs{
+    display: flex;
+    flex-direction: column;
+    color:white;
+}
+.email{
+    font-weight: bold;
+    letter-spacing: -0.4px;
+}
+
+.input-form{
+    border-radius: 5px;
+    border:0.5px solid rgb(96, 96, 96);
+    background-color: #141313 !important;  
+    color:rgb(96, 95, 95) !important;
+    width:324px;
+    height:48px;
+}
+.continue-btn{
+    display: inline-flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: nowrap;
+    align-content: center;
+    width: 45.7rem;
+    height:5rem;
+}
+.input-box{
+    display: inline-flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: nowrap;
+    align-content: center;
+    width: 45.7rem;
+    height:5rem;
+}
+.btn-success{
+    margin-top: 8px;
+    width:324px;
+    font-weight: bold !important;
+    color:black !important;
+    border-radius: 2rem !important;
+    background-color: #1ed760 !important;
+    height:48px;
+}
+.btn-success:hover{
+    width:328px;
+    height:50px;
+    background-color: #3be477 !important;
+}
+
+.lower-body-signup-link{
+    display: inline-flex;
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: nowrap;
+    margin-top: 32px;
+    align-content: center;
+    width: 45.7rem;
+    height:2rem;
+}
+
+
+.last-link{
+    letter-spacing: -1px;
+    color:white !important;
+    font-weight: bold;
+    letter-spacing: -0.4px;
+    margin-right:8px;
+}
+
+.lower-body-signup-link a{
+    font-weight: bold;
+    letter-spacing: -1px;
+    color:aliceblue !important;
+}
+
+.lower-body-signup-link a:hover{
+    color:#1ed760 !important;
+}
+
+@media (max-width :765px) {
+    .upper-body{
+        width:100dvh;
+        height:100dvh;
+        margin:0;
+    }
+    .body{
+        padding:0px;
+        padding-top: 0px;
+    }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "spotify-clone",
+  "version": "1.0.0",
+  "description": "Music Streaming Platform - Spotify Clone built with Node.js, Express, MongoDB GridFS",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"No tests configured yet\" && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Deep007h/Major-Profect-2.git"
+  },
+  "keywords": [
+    "music",
+    "streaming",
+    "spotify",
+    "clone",
+    "mongodb",
+    "gridfs",
+    "nodejs",
+    "express"
+  ],
+  "author": "Deep007h",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Deep007h/Major-Profect-2/issues"
+  },
+  "homepage": "https://github.com/Deep007h/Major-Profect-2#readme",
+  "dependencies": {
+    "connect-flash": "^0.1.1",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "method-override": "^3.0.0",
+    "mongoose": "^8.9.5",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

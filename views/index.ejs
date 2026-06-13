@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify - Web Player: Music for every Moment</title>
+    <link rel="icon" type="image/png" href="/assets/main-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <!-- Flash Messages -->
+    <% if (success && success.length > 0) { %>
+        <div class="flash-container">
+            <% success.forEach(msg => { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <%= msg %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+    <% if (error && error.length > 0) { %>
+        <div class="flash-container">
+            <% error.forEach(msg => { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <%= msg %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% }); %>
+        </div>
+    <% } %>
+
+    <div class="title-bar">
+        <div class="main-logo-div">
+            <img src="/assets/logo.png" class="spotify-logo" alt="spotify-logo">
+        </div>
+        <div class="upper-body">
+            <div class="top-left">
+                <div class="home-circle">
+                    <div class="home-div">
+                        <img src="/assets/home_white.png" class="home-logo" alt="home-png">
+                    </div>
+                </div>
+                <div class="spotify-navbar">
+                    <form class="search-form" onsubmit="return handleSearch(event)">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input class="input-form" type="text" id="searchInput" placeholder=" What do you want to play?" />
+                    </form>
+                </div>
+                <div class="top-right">
+                    <a href="#/" name="Premium">Premium</a>
+                    <a href="#/" name="support">Support</a>
+                    <a href="#/" class="download-tag" name="download">Download</a>
+                    <div class="divider"></div>
+                    <div class="top-right-2">
+                        <img class="down-img" src="/assets/down.png" alt="down">
+                        <a href="#/" class="btn-tag" name="install app">Install App</a>
+                    </div>
+                    <a href="/spotify/login" name="sign up" style="padding-right: 10px;">Sign up</a>
+                    <form class="top-btn-login" method="get" action="/spotify/login">
+                        <button type="submit" class="btn btn-light">Log in</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-body">
+        <div class="library">
+            <div class="library-body">
+                <div class="library-icn">
+                    <img class="library-img" src="/assets/library_icon.png" alt="library">
+                </div>
+                <h2>Your Library</h2>
+                <form method="get" action="/spotify/add">
+                    <button type="submit" class="btn btn-secondary"> <i class="fa-solid fa-plus"></i> Create</button>
+                </form>
+                <div class="resize-img-box">
+                    <img class="resize-img" src="/assets/resize.png" alt="resize">
+                </div>
+            </div>
+        </div>
+
+        <div class="song-collection">
+            <div class="song-main-body">
+                <div class="main-btn-attribute">
+                    <form>
+                        <button type="submit" class="btn btn-light btnn-all">All</button>
+                    </form>
+                    <form>
+                        <button type="submit" class="btn btn-dark btnn-music">Music</button>
+                    </form>
+                    <form>
+                        <button type="submit" class="btn btn-dark btnn-podcasts">Podcasts</button>
+                    </form>
+                </div>
+                <div class="Heading-song">
+                    <h2>Trending</h2>
+                </div>
+
+                <!-- Song Listing -->
+                <div class="song_panel" id="songPanel">
+                    <% for(let listing of allListings){ %>
+                        <div class="card" data-song-id="<%= listing._id %>" data-title="<%= listing.title %>" data-artist="<%= listing.artist %>">
+                            <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" class="card-img-top card-img" alt="<%= listing.title %>" onerror="this.src='/assets/card3img.jpeg'">
+                            <div class="card-body">
+                                <a href="#/" class="btn-tag song-name" name="title"><%= listing.title %></a>
+                                <p class="card-text"><%= listing.artist %></p>
+                            </div>
+                            <!-- Delete form - requires method-override -->
+                            <form action="/spotify/song/<%= listing._id %>?_method=DELETE" method="POST" class="delete-form" style="display:none;">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
+                        </div>
+                    <% } %>
+                </div>
+
+                <% if (allListings.length === 0) { %>
+                    <div class="no-songs-msg">
+                        <p>No songs yet. <a href="/spotify/upload">Upload audio</a> or <a href="/spotify/add">add song details</a>.</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Player Bar -->
+    <div class="nav-bar">
+        <div class="left-icons">
+            <div class="song-credentials">
+                <div class="current-song-img">
+                    <img src="/assets/card3img.jpeg" class="card-current-song" id="currentSongImg" alt="current song">
+                </div>
+                <div class="current-song-info">
+                    <p id="currentSongTitle">No song selected</p>
+                    <small id="currentSongArtist"></small>
+                </div>
+                <div class="add-to-fav">
+                    <img src="/assets/plus-circle.png" class="plus-circle" alt="add to favorites">
+                </div>
+            </div>
+        </div>
+
+        <div class="middle-btns">
+            <div class="play-btns">
+                <div class="play-left-toggles">
+                    <img class="shuffle" src="/assets/player_icon1.png" alt="shuffle">
+                    <img class="player-toggles" src="/assets/player_icon2.png" alt="prev">
+                </div>
+                <div class="play-pause-tag">
+                    <i onclick="playpause()" class="fa-solid fa-circle-play btns" id="ctrlIcn"></i>
+                </div>
+                <div class="play-right-toggles">
+                    <img class="player-toggles-right" src="/assets/player_icon4.png" alt="next">
+                    <img class="repeat" src="/assets/player_icon5.png" alt="repeat">
+                </div>
+            </div>
+            <div class="progress-bar">
+                <div class="prog-bar">
+                    <input type="range" id="progress" min="0" max="100" value="0" alt="progress bar">
+                </div>
+            </div>
+            <!-- Single audio element - one to rule them all -->
+            <% if (files.length > 0) { %>
+                <audio id="song" class="audio-bar">
+                    <source src="/audio/<%= files[0].filename %>" type="audio/mpeg">
+                    Your browser does not support the audio element.
+                </audio>
+            <% } else { %>
+                <audio id="song" class="audio-bar"></audio>
+            <% } %>
+        </div>
+
+        <div class="right-btns">
+            <div class="video-div">
+                <img class="v-size" src="/assets/about.png" alt="about">
+            </div>
+            <div class="lyrics-div">
+                <img class="l-size" src="/assets/lyrics.png" alt="lyrics">
+            </div>
+            <div class="queue-div">
+                <img class="q-size" src="/assets/queue.png" alt="queue">
+            </div>
+            <div class="connect-div">
+                <img class="c-size" src="/assets/connect-device.png" alt="connect">
+            </div>
+            <div class="vol-div">
+                <img class="s-size" src="/assets/speaker.png" alt="speaker">
+                <input type="range" alt="volume" min="0" max="1" step="0.01" value="0.5" id="volumeSlider">
+            </div>
+            <div class="full-screen">
+                <i class="fa-solid fa-expand full-screen"></i>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/event.js"></script>
+</body>
+</html>
