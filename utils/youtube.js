@@ -5,16 +5,21 @@ const YT_MUSICE_URL = 'https://music.youtube.com/youtubei/v1';
 const API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
 const YT_DLP = '/tmp/yt-dlp';
 
-function upgradeThumbnailResolution(url) {
-  if (!url) return '';
-  let upgraded = url;
-  upgraded = upgraded.replace(/-w\d+-h\d+/, '-w500-h500');
-  upgraded = upgraded.replace(/=w\d+-h\d+/, '=w500-h500');
-  upgraded = upgraded.replace(/=s\d+/, '=s500');
-  if (upgraded.includes('i.ytimg.com') && upgraded.includes('default.jpg')) {
-    upgraded = upgraded.replace('default.jpg', 'hqdefault.jpg');
+function shuffleArray(array) {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return upgraded;
+  return arr;
+}
+
+function getHighResThumbnail(thumbnails, videoId = null) {
+  if (videoId) {
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  }
+  if (!thumbnails || thumbnails.length === 0) return '';
+  return thumbnails[thumbnails.length - 1].url || '';
 }
 
 function createHeaders() {
@@ -36,11 +41,6 @@ function extractFromRenderer(renderer) {
   const title = titleColumn.map(r => r.text).join('').trim();
   if (!title) return null;
 
-  const thumbnail = upgradeThumbnailResolution(
-    renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url ||
-    renderer.thumbnail?.thumbnails?.[0]?.url || ''
-  );
-
   let videoId = null;
   let browseId = null;
   const endpoint =
@@ -54,6 +54,10 @@ function extractFromRenderer(renderer) {
   }
 
   if (!videoId && !browseId) return null;
+
+  const thumbnailList = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+    renderer.thumbnail?.thumbnails || [];
+  const thumbnail = getHighResThumbnail(thumbnailList, videoId);
 
   const subtitleColumns = columns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
   const artist = subtitleColumns.map(r => r.text).join('').replace(/•.*$/, '').trim();
@@ -246,11 +250,6 @@ async function getTrending() {
 
         const itemTitle = renderer.title?.runs?.[0]?.text || '';
         const subtitle = renderer.subtitle?.runs?.map(r => r.text).join('') || '';
-        const thumbnail = upgradeThumbnailResolution(
-          renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url ||
-          renderer.thumbnailRenderer?.playlistVideoThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url || ''
-        );
-
         let videoId = '';
         let browseId = '';
         let type = 'other';
@@ -262,10 +261,14 @@ async function getTrending() {
           browseId = nav.browseEndpoint.browseId;
           if (browseId.startsWith('UC')) {
             type = 'artist';
-          } else if (browseId.startsWith('MPRE') || browseId.startsWith('OLAK')) {
+          } else {
             type = 'album';
           }
         }
+
+        const thumbnailList = renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
+          renderer.thumbnailRenderer?.playlistVideoThumbnailRenderer?.thumbnail?.thumbnails || [];
+        const thumbnail = getHighResThumbnail(thumbnailList, videoId);
 
         if (itemTitle) {
           items.push({ title: itemTitle, subtitle, thumbnail, videoId, browseId, type });
@@ -273,8 +276,24 @@ async function getTrending() {
       }
 
       if (items.length > 0) {
-        results.push({ title, items });
+        results.push({ title, items: shuffleArray(items) });
       }
+    }
+
+    // Also fetch Punjabi Hits to enrich the feed
+    try {
+      const punjabiSongs = await searchSongs("Punjabi Songs");
+      if (punjabiSongs && punjabiSongs.length > 0) {
+        const punjabiItems = punjabiSongs.filter(item => item.type === 'song' || item.type === 'album');
+        if (punjabiItems.length > 0) {
+          results.push({
+            title: "Trending Punjabi Hits",
+            items: shuffleArray(punjabiItems).slice(0, 10)
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to append Punjabi hits:", err.message);
     }
 
     return results;
@@ -364,7 +383,7 @@ async function getArtistPage(browseId) {
           const videoId = overlay?.watchEndpoint?.videoId || '';
 
           // Thumbnail
-          const songThumb = upgradeThumbnailResolution(renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url || '');
+          const songThumb = getHighResThumbnail(renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [], videoId);
 
           if (songTitle && videoId) {
             popularSongs.push({
@@ -395,4 +414,67 @@ async function getArtistPage(browseId) {
   }
 }
 
-module.exports = { searchSongs, getStreamUrl, getTrending, getArtistPage };
+function findItemRenderers(obj) {
+  let renderers = [];
+  if (!obj || typeof obj !== 'object') return renderers;
+  
+  if (obj.musicResponsiveListItemRenderer || obj.musicPlaylistItemRenderer) {
+    renderers.push(obj.musicResponsiveListItemRenderer || obj.musicPlaylistItemRenderer);
+    return renderers;
+  }
+  
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (val && typeof val === 'object') {
+      renderers = renderers.concat(findItemRenderers(val));
+    }
+  }
+  return renderers;
+}
+
+async function getAlbum(browseId) {
+  const body = {
+    context: {
+      client: {
+        clientName: 'WEB_REMIX',
+        clientVersion: '1.20250101.00.00',
+        hl: 'en',
+        gl: 'US'
+      }
+    },
+    browseId
+  };
+
+  try {
+    const res = await axios.post(
+      `${YT_MUSICE_URL}/browse?key=${API_KEY}`,
+      body,
+      { headers: createHeaders(), timeout: 10000 }
+    );
+
+    const data = res.data;
+    
+    // Parse tracks using the recursive scanner
+    const renderers = findItemRenderers(data);
+    const tracks = [];
+    
+    for (const r of renderers) {
+      const parsed = extractFromRenderer(r);
+      if (parsed && parsed.videoId) {
+        tracks.push({
+          videoId: parsed.videoId,
+          title: parsed.title,
+          artist: parsed.artist,
+          thumbnail: parsed.thumbnail
+        });
+      }
+    }
+
+    return { title: '', artist: '', tracks };
+  } catch (e) {
+    console.error('Failed to get album details:', e.message);
+    return null;
+  }
+}
+
+module.exports = { searchSongs, getStreamUrl, getTrending, getArtistPage, getAlbum };

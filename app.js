@@ -8,7 +8,72 @@ const ExpressError = require("./utils/ExpressError");
 const { searchSongs, getStreamUrl, getTrending } = require("./utils/youtube");
 
 const app = express();
+
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.url}`);
+  res.on('finish', () => {
+    console.log(`[RESPONSE] ${req.method} ${req.url} -> ${res.statusCode}`);
+  });
+  next();
+});
+
 const Listing = require("./models/schema");
+
+// Database URL repair migration (runs once on startup)
+const repairUrl = (url, videoId = null) => {
+  if (!url) return url;
+  if (videoId && (url.includes('yt3.googleusercontent.com') || url.includes('yt3.ggpht.com'))) {
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  }
+  if (url.includes('googleusercontent.com') || url.includes('ggpht.com')) {
+    if (url.includes('500-h500') || url.includes('s500') || url.includes('w500')) {
+      let rep = url;
+      rep = rep.replace('=w500-h500', '=w120-h120');
+      rep = rep.replace('-w500-h500', '-w120-h120');
+      rep = rep.replace('=s500', '=s120');
+      rep = rep.replace('-s500', '-s120');
+      return rep;
+    }
+  }
+  return url;
+};
+
+const runMigration = async () => {
+  try {
+    // Repair songs.db
+    const listings = await Listing.find({});
+    for (const listing of listings) {
+      if (listing.image) {
+        const repaired = repairUrl(listing.image, listing.videoId);
+        if (repaired !== listing.image) {
+          await Listing.update({ _id: listing._id }, { $set: { image: repaired } });
+        }
+      }
+    }
+    // Repair users.db
+    const UserDb = require('./models/user').db;
+    const users = await UserDb.find({});
+    for (const user of users) {
+      if (user.savedSongs && user.savedSongs.length > 0) {
+        let changed = false;
+        const newSongs = user.savedSongs.map(song => {
+          const repaired = repairUrl(song.image, song.videoId);
+          if (repaired !== song.image) {
+            changed = true;
+          }
+          return { ...song, image: repaired };
+        });
+        if (changed) {
+          await UserDb.update({ _id: user._id }, { $set: { savedSongs: newSongs } });
+        }
+      }
+    }
+    console.log("Database image URLs repaired successfully!");
+  } catch (err) {
+    console.error("Database migration error:", err.message);
+  }
+};
+runMigration();
 
 const SESSION_SECRET = process.env.SESSION_SECRET || "musickeysecret_dev_only";
 
@@ -55,6 +120,10 @@ app.get("/", (req, res) => {
 app.get(
   "/spotify",
   catchAsync(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
     const allListings = await Listing.find({});
     res.render("index.ejs", { allListings });
   })
@@ -234,6 +303,10 @@ app.get(
 app.get(
   "/api/browse",
   catchAsync(async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
     const sections = await getTrending();
     res.json({ sections });
   })
@@ -241,6 +314,10 @@ app.get(
 
 // Artist page (server-rendered)
 app.get('/spotify/artist/:browseId', catchAsync(async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Surrogate-Control", "no-store");
   const { browseId } = req.params;
   const { getArtistPage } = require('./utils/youtube');
   const artistData = await getArtistPage(browseId);
@@ -259,6 +336,17 @@ app.get('/api/artist/:browseId', catchAsync(async (req, res) => {
     return res.status(404).json({ error: 'Artist not found' });
   }
   res.json(artistData);
+}));
+
+// Album page API (for playing albums)
+app.get('/api/album/:browseId', catchAsync(async (req, res) => {
+  const { browseId } = req.params;
+  const { getAlbum } = require('./utils/youtube');
+  const albumData = await getAlbum(browseId);
+  if (!albumData) {
+    return res.status(404).json({ error: 'Album not found' });
+  }
+  res.json(albumData);
 }));
 
 app.all("*", (req, res, next) => {

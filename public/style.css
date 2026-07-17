@@ -41,12 +41,24 @@ button { font-family: inherit; }
   height: 64px;
   min-height: 64px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .top-bar-left {
   display: flex;
   align-items: center;
+  flex: 1;
+}
+
+.top-bar-center {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  justify-content: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
 }
 
 .spotify-logo-link {
@@ -197,7 +209,9 @@ button { font-family: inherit; }
 .top-bar-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  flex: 1;
 }
 
 .explore-btn {

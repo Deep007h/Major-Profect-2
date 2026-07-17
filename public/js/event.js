@@ -21,9 +21,6 @@ let isNowPlayingOpen = false;
 function getHighResThumbnail(url) {
   if (!url) return "/assets/card3img.jpeg";
   let hr = url;
-  hr = hr.replace(/-w\d+-h\d+/, '-w500-h500');
-  hr = hr.replace(/=w\d+-h\d+/, '=w500-h500');
-  hr = hr.replace(/=s\d+/, '=s500');
   if (hr.includes('i.ytimg.com') && hr.includes('default.jpg')) {
     hr = hr.replace('default.jpg', 'hqdefault.jpg');
   }
@@ -166,7 +163,7 @@ function extractSongsFromPage() {
 }
 
 /* ===== PLAY SONG ===== */
-function playSong(videoId, title, artist, thumbnail) {
+function playSong(videoId, title, artist, thumbnail, customQueue = null) {
   currentVideoId = videoId;
   const highResThumb = getHighResThumbnail(thumbnail);
   if (currentSongTitle) currentSongTitle.textContent = title;
@@ -192,7 +189,11 @@ function playSong(videoId, title, artist, thumbnail) {
     })
     .catch(e => console.error("Fetch stream error:", e));
 
-  queue = extractSongsFromPage();
+  if (customQueue) {
+    queue = customQueue;
+  } else {
+    queue = extractSongsFromPage();
+  }
   queueIndex = queue.findIndex(s => s.videoId === videoId);
 
   // Update heart button icon style
@@ -509,7 +510,28 @@ function renderTrendingSections(sections) {
       return;
     }
 
-    // Song/Album card → play
+    // Album card → fetch tracks, play first song, open queue panel
+    if (card.classList.contains("album-card")) {
+      const browseId = card.dataset.browseId;
+      if (browseId) {
+        fetch(`/api/album/${browseId}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.tracks && data.tracks.length > 0) {
+              const first = data.tracks[0];
+              playSong(first.videoId, first.title, first.artist, first.thumbnail, data.tracks);
+              // Open queue panel automatically
+              if (!isNowPlayingOpen) {
+                toggleNowPlaying();
+              }
+            }
+          })
+          .catch(err => console.error("Failed to play album:", err));
+      }
+      return;
+    }
+
+    // Song card → play
     const videoId = card.dataset.videoId;
     if (videoId) {
       const title = card.dataset.title || "Unknown";
