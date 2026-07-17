@@ -16,10 +16,15 @@ function shuffleArray(array) {
 
 function getHighResThumbnail(thumbnails, videoId = null) {
   if (videoId) {
-    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+    return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
   }
   if (!thumbnails || thumbnails.length === 0) return '';
-  return thumbnails[thumbnails.length - 1].url || '';
+  let url = thumbnails[thumbnails.length - 1].url || '';
+  if (url.includes('=w') || url.includes('=s') || url.includes('=h')) {
+    const baseUrl = url.split(/[=]/)[0];
+    return `${baseUrl}=w544-h544-l90-rj`;
+  }
+  return url;
 }
 
 function createHeaders() {
@@ -55,6 +60,18 @@ function extractFromRenderer(renderer) {
 
   if (!videoId && !browseId) return null;
 
+  // Block videos (non-ATV items)
+  const overlayEndpoint = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint;
+  const navEndpoint = renderer.navigationEndpoint;
+  const getFromEndpoint = (ep) => {
+    return ep?.watchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType ||
+           ep?.watchPlaylistEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
+  };
+  const musicVideoType = getFromEndpoint(overlayEndpoint) || getFromEndpoint(navEndpoint);
+  if (musicVideoType && musicVideoType !== 'MUSIC_VIDEO_TYPE_ATV') {
+    return null;
+  }
+
   const thumbnailList = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
     renderer.thumbnail?.thumbnails || [];
   const thumbnail = getHighResThumbnail(thumbnailList, videoId);
@@ -82,14 +99,55 @@ function parseSearchResults(data) {
     const sections = data.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
 
     for (const section of sections) {
+      // Top Result (musicCardShelfRenderer)
       const shelf = section.musicCardShelfRenderer;
-      if (shelf?.contents) {
-        for (const item of shelf.contents) {
-          const r = extractFromRenderer(item.musicResponsiveListItemRenderer);
-          if (r) results.push(r);
+      if (shelf) {
+        const title = shelf.title?.runs?.[0]?.text || '';
+        const endpoint = shelf.onTap || shelf.navigationEndpoint;
+        let videoId = endpoint?.watchEndpoint?.videoId;
+        let browseId = endpoint?.browseEndpoint?.browseId;
+        
+        let type = 'song';
+        if (browseId) {
+          if (browseId.startsWith('UC')) {
+            type = 'artist';
+          } else if (browseId.startsWith('MPRE') || browseId.startsWith('OLAK')) {
+            type = 'album';
+          }
+        }
+        
+        const thumbnailList = shelf.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+        const thumbnail = getHighResThumbnail(thumbnailList, videoId);
+        
+        const subtitle = shelf.subtitle?.runs?.map(r => r.text).join('') || '';
+        const artist = subtitle.replace(/•.*$/, '').trim();
+        
+        if ((videoId || browseId) && title) {
+          // Block videos (non-ATV items)
+          let blockVideo = false;
+          const getFromEndpoint = (ep) => {
+            return ep?.watchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType ||
+                   ep?.watchPlaylistEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
+          };
+          const musicVideoType = getFromEndpoint(endpoint);
+          if (musicVideoType && musicVideoType !== 'MUSIC_VIDEO_TYPE_ATV') {
+            blockVideo = true;
+          }
+
+          if (!blockVideo) {
+            results.push({
+              videoId,
+              browseId,
+              title,
+              artist: type === 'artist' ? 'Artist' : artist,
+              thumbnail,
+              type
+            });
+          }
         }
       }
 
+      // Rest of the results (itemSectionRenderer)
       const itemSection = section.itemSectionRenderer;
       if (itemSection?.contents) {
         for (const item of itemSection.contents) {
@@ -108,6 +166,7 @@ function parseSearchResults(data) {
         }
       }
 
+      // Rest of the results (musicShelfRenderer)
       const musicShelf = section.musicShelfRenderer;
       if (musicShelf?.contents) {
         for (const item of musicShelf.contents) {
@@ -212,6 +271,56 @@ async function getStreamUrl(videoId) {
   }
 }
 
+let cachedPunjabiArtists = [];
+let cachedEnglishArtists = [];
+
+const defaultPunjabiArtists = [
+  { name: "Prem Dhillon", browseId: "UCW9eEpBfH_gWRc4ac70tj7w", thumbnail: "https://yt3.googleusercontent.com/WyNcsd5_HkKIT6KLJHjo-bIL3ayXnBKRBSYFpV2B8QWB-PjkiDg5O7peyZVKv2_ErONKtwne=w544-h544-l90-rj" },
+  { name: "Sidhu Moose Wala", browseId: "UCIOXXUXQ8y5ivei97JkiBAw", thumbnail: "https://yt3.ggpht.com/ytc/AIdro_kiQJ0Hhp0O-tdaY1dy81-gSNujjccUlWstnpFr686ZlMk=w544-h544-l90-rj" },
+  { name: "Karan Aujla", browseId: "UCSmK5WX5U4gdtebWjoL81og", thumbnail: "https://lh3.googleusercontent.com/k7sgqqcV5VScaMZtTmS8W_tfouLVBpgyJII0epYE2Vjw1-zzhGgUCV51aHxZn6cmZKKJgUfNlIVpZg=w544-h544-l90-rj" },
+  { name: "Diljit Dosanjh", browseId: "UCJ2m-WpROlZCiZZID9r7NSQ", thumbnail: "https://yt3.googleusercontent.com/7EYXXMXY594V8y4sZT2aawmdKgDAGTu5jNm9C-HpR3jY9cZJ0NMxS__nZKBdWZ1PUpJPjc2BAA=w544-h544-l90-rj" },
+  { name: "Shubh", browseId: "UCDoxhZGShhNvN4Bc3nWZptg", thumbnail: "https://lh3.googleusercontent.com/xGLCqdWB64eQARHXZdE4ut8VkNK7UnkrRKmQ4Bnx5ksOSmXctLUiEzjd4fh48EdpslwA219yNJnKU3k=w544-h544-l90-rj" },
+  { name: "Arjan Dhillon", browseId: "UC4gE0O_SyPb1cuRNzT_NMqQ", thumbnail: "https://yt3.googleusercontent.com/mXv94eUP3RgCjA_HdMzJo3YWR0wLJJr58UY2ypLI1meFjGftlOOYbp-Ezw8hiUAKRipcgi4B=w544-h544-l90-rj" }
+];
+
+const defaultEnglishArtists = [
+  { name: "The Weeknd", browseId: "UClYV6hHlupm_S_ObS1W-DYw", thumbnail: "https://lh3.googleusercontent.com/U-SAmNOu4TynE818gLCfKsuHZ0U5YNEtO9mrjSI9WCCKERs98LzrCal5kajBBTQNwdcisoB2Bn-pHp4=w544-h544-l90-rj" },
+  { name: "Drake", browseId: "UCU6cE7pdJPc6DU2jSrKEsdQ", thumbnail: "https://yt3.googleusercontent.com/qqxv5qVDpNvVobACzp-FFrArjlSs-NayarhdG8P7XCvTpfpynDVbkOv4W7USru2NKaQbmWbWcopm6grH=w544-h544-l90-rj" },
+  { name: "Taylor Swift", browseId: "UCPC0L1d253x-KuMNwa05TpA", thumbnail: "https://yt3.googleusercontent.com/RCpTA6EXJQyjVFDosWOKa2SMmqkua_lA9mHPDWWciLwgqpZLz-k8rXWRF_367trrQ7up9BUwCbk6kRk=w544-h544-l90-rj" },
+  { name: "Ed Sheeran", browseId: "UClmXPfaYhXOYsNn_QUyheWQ", thumbnail: "https://lh3.googleusercontent.com/jQoBIAS6JjFGpcqQY1M_Mh3AasOvFENCdVRxkgax1a0K6qiq7AgE3MbJ6Jtt-Jndcarvoawmrg66KTny=w544-h544-l90-rj" },
+  { name: "Bruno Mars", browseId: "UCZn4r7heNOPY-C43YIywnVA", thumbnail: "https://lh3.googleusercontent.com/hnefGBrazRhn4Z92bdSZBUENl40ONjRiVDsmZKZh-WZ2iCKE-2c7KKR7SNcZfzLHoRyB3E6as8L87YA=w544-h544-l90-rj" },
+  { name: "Post Malone", browseId: "UCyD3XWRK9ko-izf2nBSFitw", thumbnail: "https://lh3.googleusercontent.com/48LfK4z6o-CCEWgHQnQfg0ltcT9tbZSN0qjSh0FSJsJI5GF48j2-pH219ciG1ML-PI80ZGD4Vz6sjg=w544-h544-l90-rj" },
+  { name: "Travis Scott", browseId: "UCf_gP4AMRSgAfyzbkeS9k4g", thumbnail: "https://yt3.googleusercontent.com/r9k_FpAswxhQnl_cudiaT2ocWFccR6SzEFXgZ9a12iR5eDPSILlIL2EQewyQ-yYSt1JFyH1pqnoBXxs=w544-h544-l90-rj" }
+];
+
+async function getCuratedArtistList(artists) {
+  const promises = artists.map(async (a) => {
+    try {
+      const searchRes = await searchSongs(a.name);
+      const matched = searchRes.find(item => item.type === 'artist' && (item.browseId === a.browseId || item.title.toLowerCase() === a.name.toLowerCase()));
+      if (matched) {
+        return {
+          title: matched.title,
+          subtitle: "Artist",
+          thumbnail: matched.thumbnail,
+          browseId: matched.browseId,
+          type: 'artist'
+        };
+      }
+    } catch (err) {
+      console.error(`Error resolving artist ${a.name}:`, err.message);
+    }
+    return {
+      title: a.name,
+      subtitle: "Artist",
+      thumbnail: a.thumbnail,
+      browseId: a.browseId,
+      type: 'artist'
+    };
+  });
+  return Promise.all(promises);
+}
+
 async function getTrending() {
   const body = {
     context: {
@@ -266,6 +375,18 @@ async function getTrending() {
           }
         }
 
+        if (!videoId && !browseId) continue;
+
+        // Block videos (non-ATV items)
+        const getFromEndpoint = (ep) => {
+          return ep?.watchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType ||
+                 ep?.watchPlaylistEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
+        };
+        const musicVideoType = getFromEndpoint(nav);
+        if (musicVideoType && musicVideoType !== 'MUSIC_VIDEO_TYPE_ATV') {
+          continue;
+        }
+
         const thumbnailList = renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails ||
           renderer.thumbnailRenderer?.playlistVideoThumbnailRenderer?.thumbnail?.thumbnails || [];
         const thumbnail = getHighResThumbnail(thumbnailList, videoId);
@@ -278,6 +399,36 @@ async function getTrending() {
       if (items.length > 0) {
         results.push({ title, items: shuffleArray(items) });
       }
+    }
+
+    // Curated Punjabi Artists Row
+    try {
+      if (cachedPunjabiArtists.length === 0) {
+        cachedPunjabiArtists = await getCuratedArtistList(defaultPunjabiArtists);
+      }
+      if (cachedPunjabiArtists.length > 0) {
+        results.push({
+          title: "Popular Punjabi Artists",
+          items: cachedPunjabiArtists
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load curated Punjabi artists:", err.message);
+    }
+
+    // Curated English Artists Row
+    try {
+      if (cachedEnglishArtists.length === 0) {
+        cachedEnglishArtists = await getCuratedArtistList(defaultEnglishArtists);
+      }
+      if (cachedEnglishArtists.length > 0) {
+        results.push({
+          title: "Popular English Artists",
+          items: cachedEnglishArtists
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load curated English artists:", err.message);
     }
 
     // Also fetch Punjabi Hits to enrich the feed
@@ -301,6 +452,38 @@ async function getTrending() {
     console.error('Failed to get trending:', e.message);
     return [];
   }
+}
+
+function parseCarouselItem(item) {
+  const renderer = item.musicTwoRowItemRenderer;
+  if (!renderer) return null;
+
+  const title = renderer.title?.runs?.[0]?.text || '';
+  const subtitle = renderer.subtitle?.runs?.map(r => r.text).join('') || '';
+  
+  const thumbnails = renderer.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+  const thumbnail = getHighResThumbnail(thumbnails);
+  
+  const endpoint = renderer.navigationEndpoint || renderer.title?.runs?.[0]?.navigationEndpoint;
+  const browseId = endpoint?.browseId || endpoint?.browseEndpoint?.browseId || endpoint?.watchPlaylistEndpoint?.playlistId || '';
+  const videoId = endpoint?.watchEndpoint?.videoId || '';
+  
+  const pageType = endpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType || '';
+  let type = 'album';
+  if (pageType === 'MUSIC_PAGE_TYPE_ARTIST') {
+    type = 'artist';
+  } else if (pageType === 'MUSIC_PAGE_TYPE_PLAYLIST') {
+    type = 'playlist';
+  }
+  
+  return {
+    title,
+    subtitle,
+    thumbnail,
+    browseId,
+    videoId,
+    type
+  };
 }
 
 async function getArtistPage(browseId) {
@@ -345,59 +528,101 @@ async function getArtistPage(browseId) {
       b.musicInlineBadgeRenderer?.icon?.iconType === 'CHECK_CIRCLE_THICK'
     ));
 
-    // Parse popular songs from the first shelf section
     const tabs = data.contents?.singleColumnBrowseResultsRenderer?.tabs || [];
     const sections = tabs[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+    
     const popularSongs = [];
+    const albums = [];
+    const singles = [];
+    const featuredOn = [];
+    const playlists = [];
+    const fansAlsoLike = [];
+    let aboutDescription = '';
+    let aboutMonthlyListeners = '';
 
     for (const section of sections) {
-      const musicShelf = section.musicShelfRenderer;
-      if (!musicShelf) continue;
+      const type = Object.keys(section)[0];
+      const renderer = section[type];
+      if (!renderer) continue;
 
-      const shelfTitle = musicShelf.title?.runs?.[0]?.text || '';
-      if (shelfTitle.toLowerCase().includes('song') || shelfTitle.toLowerCase().includes('popular') || sections.indexOf(section) === 0) {
-        for (const item of (musicShelf.contents || [])) {
-          const renderer = item.musicResponsiveListItemRenderer;
-          if (!renderer) continue;
+      let title = renderer.title?.runs?.[0]?.text || '';
+      if (!title && renderer.header) {
+        const headerType = Object.keys(renderer.header)[0];
+        title = renderer.header[headerType]?.title?.runs?.[0]?.text || '';
+      }
 
-          const columns = renderer.flexColumns || [];
+      const contents = renderer.contents || [];
 
-          // Title
-          const titleRuns = columns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-          const songTitle = titleRuns[0]?.text || '';
+      if (type === 'musicShelfRenderer') {
+        if (popularSongs.length === 0 && (title.toLowerCase().includes('song') || title.toLowerCase().includes('popular') || sections.indexOf(section) === 0)) {
+          for (const item of (renderer.contents || [])) {
+            const rowRenderer = item.musicResponsiveListItemRenderer;
+            if (!rowRenderer) continue;
 
-          // Artists
-          const artistRuns = columns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-          const artists = artistRuns.map(r => r.text).join('').replace(/\s*•.*$/, '').trim();
+            const columns = rowRenderer.flexColumns || [];
+            const songTitle = columns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.[0]?.text || '';
+            const artists = columns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs?.map(r => r.text).join('').replace(/\s*•.*$/, '').trim();
 
-          // Plays count
-          const fixedColumns = renderer.fixedColumns || [];
-          const plays = fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text || '';
+            const fixedColumns = rowRenderer.fixedColumns || [];
+            const plays = fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text || '';
+            const duration = fixedColumns[1]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text ||
+              (rowRenderer.fixedColumns?.length > 0 ? rowRenderer.fixedColumns[rowRenderer.fixedColumns.length - 1]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text : '') || '';
 
-          // Duration
-          const duration = fixedColumns[1]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text ||
-            (renderer.fixedColumns?.length > 0 ? renderer.fixedColumns[renderer.fixedColumns.length - 1]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text : '') || '';
+            const overlay = rowRenderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint;
+            const videoId = overlay?.watchEndpoint?.videoId || '';
 
-          // Video ID
-          const overlay = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint;
-          const videoId = overlay?.watchEndpoint?.videoId || '';
+            const getFromEndpoint = (ep) => {
+              return ep?.watchEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType ||
+                     ep?.watchPlaylistEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
+            };
+            const musicVideoType = getFromEndpoint(overlay) || getFromEndpoint(rowRenderer.navigationEndpoint);
+            if (musicVideoType && musicVideoType !== 'MUSIC_VIDEO_TYPE_ATV') {
+              continue;
+            }
 
-          // Thumbnail
-          const songThumb = getHighResThumbnail(renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [], videoId);
+            const songThumb = getHighResThumbnail(rowRenderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [], videoId);
 
-          if (songTitle && videoId) {
-            popularSongs.push({
-              videoId,
-              title: songTitle,
-              thumbnail: songThumb,
-              artists,
-              plays,
-              duration
-            });
+            if (songTitle && videoId) {
+              popularSongs.push({
+                videoId,
+                title: songTitle,
+                thumbnail: songThumb,
+                artists,
+                plays,
+                duration
+              });
+            }
           }
         }
-        break; // Only take the first matching shelf
+      } else if (type === 'musicCarouselShelfRenderer') {
+        const items = [];
+        for (const item of contents) {
+          const parsed = parseCarouselItem(item);
+          if (parsed) items.push(parsed);
+        }
+
+        const lowerTitle = title.toLowerCase();
+        if (lowerTitle.includes('album')) {
+          albums.push(...items);
+        } else if (lowerTitle.includes('single') || lowerTitle.includes('ep')) {
+          singles.push(...items);
+        } else if (lowerTitle.includes('featured') || lowerTitle.includes('featuring')) {
+          featuredOn.push(...items);
+        } else if (lowerTitle.includes('playlist')) {
+          playlists.push(...items);
+        } else if (lowerTitle.includes('fans') || lowerTitle.includes('like') || lowerTitle.includes('similar')) {
+          fansAlsoLike.push(...items);
+        }
+      } else if (type === 'musicDescriptionShelfRenderer') {
+        const runs = renderer.runs || [];
+        aboutDescription = runs.map(r => r.text).join('').trim();
+        aboutMonthlyListeners = renderer.subheader?.runs?.[0]?.text || '';
       }
+    }
+
+    const artistPick = albums.length > 0 ? albums[0] : (singles.length > 0 ? singles[0] : null);
+    if (artistPick) {
+      artistPick.label = "Album of the year";
     }
 
     return {
@@ -406,7 +631,15 @@ async function getArtistPage(browseId) {
       banner,
       monthlyListeners,
       verified,
-      popularSongs
+      popularSongs,
+      albums,
+      singles,
+      featuredOn,
+      playlists,
+      fansAlsoLike,
+      aboutDescription,
+      aboutMonthlyListeners,
+      artistPick
     };
   } catch (e) {
     console.error('Failed to get artist page:', e.message);

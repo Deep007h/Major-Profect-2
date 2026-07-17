@@ -96,7 +96,7 @@
             <% const displayList = savedSongs || []; %>
             <% for(let listing of displayList) { %>
               <div class="sidebar-playlist-item" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>" data-image="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>">
-                <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="" onerror="this.src='/assets/card3img.jpeg'">
+                <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
                 <div class="sidebar-item-info">
                   <div class="sidebar-item-title"><%= listing.title %></div>
                   <div class="sidebar-item-subtitle"><%= listing.artist %></div>
@@ -157,32 +157,269 @@
           </button>
         </div>
 
-        <!-- Popular Songs -->
-        <% if (artistData.popularSongs && artistData.popularSongs.length > 0) { %>
-          <div class="popular-tracks">
-            <h2>Popular</h2>
-            <div class="tracks-table">
-              <% artistData.popularSongs.forEach(function(song, index) { %>
-                <div class="track-row" data-video-id="<%= song.videoId %>" data-title="<%= song.title %>" data-artist="<%= song.artists %>" data-thumbnail="<%= song.thumbnail %>">
-                  <div class="track-number">
-                    <span class="track-num-text"><%= index + 1 %></span>
-                    <button class="track-play-icon"><i class="fa-solid fa-play"></i></button>
-                  </div>
-                  <div class="track-title-col">
-                    <img class="track-img" src="<%= song.thumbnail %>" alt="<%= song.title %>" onerror="this.src='/assets/card3img.jpeg'">
-                    <div class="track-title-info">
-                      <span class="track-title-text"><%= song.title %></span>
-                      <span class="track-artists-text"><%= song.artists %></span>
+        <!-- Top Layout Grid: Popular tracks + Artist pick -->
+        <div class="artist-top-layout">
+          <!-- Popular Songs -->
+          <% if (artistData.popularSongs && artistData.popularSongs.length > 0) { %>
+            <div class="popular-tracks" style="padding: 0;">
+              <h2>Popular</h2>
+              <div class="tracks-table">
+                <% artistData.popularSongs.forEach(function(song, index) { %>
+                  <div class="track-row" data-video-id="<%= song.videoId %>" data-title="<%= song.title %>" data-artist="<%= song.artists %>" data-thumbnail="<%= song.thumbnail %>">
+                    <div class="track-number">
+                      <span class="track-num-text"><%= index + 1 %></span>
+                      <button class="track-play-icon"><i class="fa-solid fa-play"></i></button>
                     </div>
+                    <div class="track-title-col">
+                      <img class="track-img" src="<%= song.thumbnail %>" alt="<%= song.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                      <div class="track-title-info">
+                        <span class="track-title-text"><%= song.title %></span>
+                        <span class="track-artists-text"><%= song.artists %></span>
+                      </div>
+                    </div>
+                    <div class="track-plays"><%= song.plays ? song.plays.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '' %></div>
+                    <div class="track-duration"><%= song.duration %></div>
                   </div>
-                  <div class="track-plays"><%= song.plays ? song.plays.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : '' %></div>
-                  <div class="track-duration"><%= song.duration %></div>
+                <% }); %>
+              </div>
+            </div>
+          <% } %>
+
+          <!-- Artist Pick Column -->
+          <% if (artistData.artistPick) { %>
+            <div class="artist-pick-container">
+              <h2>Artist pick</h2>
+              <div class="artist-pick-card" <% if (artistData.artistPick.videoId) { %>data-video-id="<%= artistData.artistPick.videoId %>"<% } %> <% if (artistData.artistPick.browseId) { %>data-browse-id="<%= artistData.artistPick.browseId %>"<% } %> data-title="<%= artistData.artistPick.title %>" data-artist="<%= artistData.artistPick.subtitle %>">
+                <img class="artist-pick-img" src="<%= artistData.artistPick.thumbnail %>" alt="" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                <div class="artist-pick-info">
+                  <div class="artist-pick-badge">
+                    <i class="fa-solid fa-compact-disc"></i>
+                    <span><%= artistData.artistPick.label %></span>
+                  </div>
+                  <div class="artist-pick-title"><%= artistData.artistPick.title %></div>
+                  <div class="artist-pick-type"><%= artistData.artistPick.subtitle %></div>
+                </div>
+              </div>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- Discography Section -->
+        <% const allReleases = (artistData.albums || []).concat(artistData.singles || []); %>
+        <% if (allReleases.length > 0) { %>
+          <div class="discography-section">
+            <div class="discography-header">
+              <h2>Discography</h2>
+              <a href="#" class="show-all">Show all</a>
+            </div>
+            <div class="discography-tabs">
+              <button class="disco-tab active" data-filter="all">Popular releases</button>
+              <button class="disco-tab" data-filter="albums">Albums</button>
+              <button class="disco-tab" data-filter="singles">Singles and EPs</button>
+              <button class="disco-tab" data-filter="compilations">Compilations</button>
+            </div>
+            <div class="card-row">
+              <% allReleases.forEach(function(item) { %>
+                <div class="song-card disco-card" <% if (item.videoId) { %>data-video-id="<%= item.videoId %>"<% } %> <% if (item.browseId) { %>data-browse-id="<%= item.browseId %>"<% } %> data-title="<%= item.title %>" data-artist="<%= item.subtitle %>" data-type="<%= item.type %>" data-subtitle="<%= item.subtitle %>">
+                  <div class="card-img-wrap">
+                    <img src="<%= item.thumbnail %>" alt="<%= item.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                    <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+                  </div>
+                  <div class="card-title"><%= item.title %></div>
+                  <div class="card-subtitle-multi"><%= item.subtitle %></div>
                 </div>
               <% }); %>
             </div>
           </div>
         <% } %>
+
+        <!-- Featuring Section -->
+        <% if (artistData.featuredOn && artistData.featuredOn.length > 0) { %>
+          <div class="artist-carousel-section">
+            <div class="artist-carousel-section-header">
+              <h2>Featuring <%= artistData.name %></h2>
+              <a href="#" class="show-all">Show all</a>
+            </div>
+            <div class="card-row">
+              <% artistData.featuredOn.forEach(function(item) { %>
+                <div class="song-card" <% if (item.videoId) { %>data-video-id="<%= item.videoId %>"<% } %> <% if (item.browseId) { %>data-browse-id="<%= item.browseId %>"<% } %> data-title="<%= item.title %>" data-artist="<%= item.subtitle %>">
+                  <div class="card-img-wrap">
+                    <img src="<%= item.thumbnail %>" alt="<%= item.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                    <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+                  </div>
+                  <div class="card-title"><%= item.title %></div>
+                  <div class="card-subtitle-multi"><%= item.subtitle %></div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- About Section -->
+        <% if (artistData.aboutDescription) { %>
+          <div class="about-section">
+            <h2>About</h2>
+            <div class="about-card" style="background-image: url('<%= artistData.banner || artistData.thumbnail || '' %>');">
+              <div class="about-overlay">
+                <div class="about-listeners">
+                  <%= artistData.aboutMonthlyListeners || artistData.monthlyListeners || '' %>
+                </div>
+                <div class="about-description">
+                  <%= artistData.aboutDescription %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Discovered On Section -->
+        <% if (artistData.playlists && artistData.playlists.length > 0) { %>
+          <div class="artist-carousel-section">
+            <div class="artist-carousel-section-header">
+              <h2>Discovered on</h2>
+              <a href="#" class="show-all">Show all</a>
+            </div>
+            <div class="card-row">
+              <% artistData.playlists.forEach(function(item) { %>
+                <div class="song-card" <% if (item.videoId) { %>data-video-id="<%= item.videoId %>"<% } %> <% if (item.browseId) { %>data-browse-id="<%= item.browseId %>"<% } %> data-title="<%= item.title %>" data-artist="<%= item.subtitle %>">
+                  <div class="card-img-wrap">
+                    <img src="<%= item.thumbnail %>" alt="<%= item.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                    <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+                  </div>
+                  <div class="card-title"><%= item.title %></div>
+                  <div class="card-subtitle-multi"><%= item.subtitle %></div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Fans Also Like Section -->
+        <% if (artistData.fansAlsoLike && artistData.fansAlsoLike.length > 0) { %>
+          <div class="artist-carousel-section">
+            <div class="artist-carousel-section-header">
+              <h2>Fans also like</h2>
+              <a href="#" class="show-all">Show all</a>
+            </div>
+            <div class="card-row">
+              <% artistData.fansAlsoLike.forEach(function(item) { %>
+                <div class="artist-card" data-browse-id="<%= item.browseId %>" data-title="<%= item.title %>" data-subtitle="<%= item.subtitle %>">
+                  <div class="card-img-wrap">
+                    <img src="<%= item.thumbnail %>" alt="<%= item.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                    <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+                  </div>
+                  <div class="card-title"><%= item.title %></div>
+                  <div class="card-subtitle"><%= item.subtitle %></div>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Discography filter tabs client-side logic -->
+        <script>
+          document.addEventListener("DOMContentLoaded", function() {
+            const tabs = document.querySelectorAll(".disco-tab");
+            const cards = document.querySelectorAll(".disco-card");
+
+            tabs.forEach(tab => {
+              tab.addEventListener("click", function() {
+                tabs.forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+
+                const filter = tab.dataset.filter;
+                cards.forEach(card => {
+                  const type = card.dataset.type;
+                  const subtitle = (card.dataset.subtitle || '').toLowerCase();
+                  
+                  if (filter === "all") {
+                    card.style.display = "block";
+                  } else if (filter === "albums") {
+                    if (type === "album" || (subtitle.includes("album") && !subtitle.includes("single") && !subtitle.includes("ep"))) {
+                      card.style.display = "block";
+                    } else {
+                      card.style.display = "none";
+                    }
+                  } else if (filter === "singles") {
+                    if (type === "single" || subtitle.includes("single") || subtitle.includes("ep")) {
+                      card.style.display = "block";
+                    } else {
+                      card.style.display = "none";
+                    }
+                  } else if (filter === "compilations") {
+                    if (subtitle.includes("compilation")) {
+                      card.style.display = "block";
+                    } else {
+                      card.style.display = "none";
+                    }
+                  }
+                });
+              });
+            });
+          });
+        </script>
       </main>
+
+      <!-- ===== NOW PLAYING PANEL (right sidebar, hidden by default) ===== -->
+      <aside class="now-playing-panel" id="nowPlayingPanel">
+        <div class="np-header">
+          <span class="np-header-title" id="npArtistName"></span>
+          <button class="np-close-btn" id="npCloseBtn" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="np-artist-image-wrap">
+          <img src="/assets/card3img.jpeg" alt="" id="npArtistImg" class="np-artist-img" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+          <button class="np-follow-btn">Follow</button>
+        </div>
+        <div class="np-song-info">
+          <div class="np-song-title" id="npSongTitle"></div>
+          <div class="np-song-artists" id="npSongArtists"></div>
+          <button class="np-add-btn" title="Add to library"><i class="fa-solid fa-circle-plus"></i></button>
+        </div>
+        <div class="np-credits-section">
+          <div class="np-credits-header">
+            <span>Credits</span>
+            <a href="#" class="show-all">Show all</a>
+          </div>
+          <div class="np-credits-list" id="npCreditsList">
+            <!-- Credits populated by JS -->
+          </div>
+        </div>
+        <div class="np-queue-section">
+          <div class="np-queue-header">
+            <span>Next in queue</span>
+            <a href="#" class="show-all">Open queue</a>
+          </div>
+          <div class="np-queue-list" id="npQueueList">
+            <!-- Queue populated by JS -->
+          </div>
+        </div>
+      </aside>
+
+      <!-- ===== QUEUE PANEL (right sidebar, hidden by default) ===== -->
+      <aside class="queue-panel" id="queuePanel">
+        <div class="q-header">
+          <span class="q-header-title">Queue</span>
+          <button class="q-close-btn" id="qCloseBtn" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="q-content">
+          <div class="q-section">
+            <h3 class="q-section-title">Now playing</h3>
+            <div class="q-now-playing-item" id="qNowPlayingItem">
+              <!-- Current song populated by JS -->
+            </div>
+          </div>
+          <div class="q-section">
+            <h3 class="q-section-title" id="qNextFromHeader">Next from:</h3>
+            <div class="q-list" id="qList">
+              <!-- Upcoming queue list populated by JS -->
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- ===== PREVIEW BANNER ===== -->
@@ -197,7 +434,7 @@
     <!-- ===== PLAYER BAR ===== -->
     <div class="player-bar">
       <div class="player-left">
-        <img src="/assets/card3img.jpeg" id="currentSongImg" alt="current song" class="player-album-art" title="Open full screen">
+        <img src="/assets/card3img.jpeg" id="currentSongImg" alt="current song" class="player-album-art" title="Open full screen" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
         <div class="track-info">
           <span class="track-name" id="currentSongTitle">No song selected</span>
           <span class="track-artist" id="currentSongArtist"></span>
@@ -235,6 +472,42 @@
           <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
         </div>
         <button class="action-btn" id="btnFullscreen" title="Full screen"><i class="fa-solid fa-expand"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FULLSCREEN OVERLAY ===== -->
+  <div class="fullscreen-overlay" id="fullscreenOverlay">
+    <div class="fs-top-bar">
+      <span class="fs-artist-name" id="fsArtistName"></span>
+      <div class="fs-actions">
+        <button class="fs-action-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+        <button class="fs-action-btn" title="Miniplayer"><i class="fa-solid fa-window-restore"></i></button>
+        <button class="fs-action-btn" title="View Artist"><i class="fa-solid fa-user"></i></button>
+        <button class="fs-action-btn" title="More"><i class="fa-solid fa-ellipsis"></i></button>
+        <button class="fs-action-btn" id="fsExitBtn" title="Exit full screen"><i class="fa-solid fa-down-left-and-up-right-to-center"></i></button>
+        <button class="fs-action-btn" id="fsCloseBtn" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="fs-content">
+      <img src="/assets/card3img.jpeg" alt="" id="fsAlbumArt" class="fs-album-art" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+    </div>
+    <div class="fs-bottom">
+      <div class="fs-bottom-sections">
+        <div class="fs-credits-section">
+          <div class="fs-section-header">
+            <span>Credits</span>
+            <a href="#" class="show-all">Show all</a>
+          </div>
+          <div class="fs-credits-list" id="fsCreditsList"></div>
+        </div>
+        <div class="fs-queue-section">
+          <div class="fs-section-header">
+            <span>Next in queue</span>
+            <a href="#" class="show-all">Open queue</a>
+          </div>
+          <div class="fs-queue-list" id="fsQueueList"></div>
+        </div>
       </div>
     </div>
   </div>

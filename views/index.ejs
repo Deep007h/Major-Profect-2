@@ -120,7 +120,7 @@
             <% const displayList = (user && savedSongs) ? savedSongs : allListings; %>
             <% for(let listing of displayList) { %>
               <div class="sidebar-playlist-item" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>" data-image="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>">
-                <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="" onerror="this.src='/assets/card3img.jpeg'">
+                <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="" onerror="if (this.src.includes('maxresdefault.jpg')) { this.src = this.src.replace('maxresdefault.jpg', 'hqdefault.jpg'); } else { this.src='/assets/card3img.jpeg'; }">
                 <div class="sidebar-item-info">
                   <div class="sidebar-item-title"><%= listing.title %></div>
                   <div class="sidebar-item-subtitle"><%= listing.artist %></div>
@@ -163,7 +163,7 @@
             <% for(let listing of allListings) { %>
               <div class="song-card" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>">
                 <div class="card-img-wrap">
-                  <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="<%= listing.title %>" onerror="this.src='/assets/card3img.jpeg'">
+                  <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="<%= listing.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
                   <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
                 </div>
                 <div class="card-title"><%= listing.title %></div>
@@ -189,7 +189,7 @@
           </button>
         </div>
         <div class="np-artist-image-wrap">
-          <img src="/assets/card3img.jpeg" alt="" id="npArtistImg" class="np-artist-img">
+          <img src="/assets/card3img.jpeg" alt="" id="npArtistImg" class="np-artist-img" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
           <button class="np-follow-btn">Follow</button>
         </div>
         <div class="np-song-info">
@@ -216,6 +216,30 @@
           </div>
         </div>
       </aside>
+
+      <!-- ===== QUEUE PANEL (right sidebar, hidden by default) ===== -->
+      <aside class="queue-panel" id="queuePanel">
+        <div class="q-header">
+          <span class="q-header-title">Queue</span>
+          <button class="q-close-btn" id="qCloseBtn" title="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="q-content">
+          <div class="q-section">
+            <h3 class="q-section-title">Now playing</h3>
+            <div class="q-now-playing-item" id="qNowPlayingItem">
+              <!-- Current song populated by JS -->
+            </div>
+          </div>
+          <div class="q-section">
+            <h3 class="q-section-title" id="qNextFromHeader">Next from:</h3>
+            <div class="q-list" id="qList">
+              <!-- Upcoming queue list populated by JS -->
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <!-- ===== PREVIEW BANNER ===== -->
@@ -230,7 +254,7 @@
     <!-- ===== PLAYER BAR ===== -->
     <div class="player-bar">
       <div class="player-left">
-        <img src="/assets/card3img.jpeg" id="currentSongImg" alt="current song" class="player-album-art" title="Open full screen">
+        <img src="/assets/card3img.jpeg" id="currentSongImg" alt="current song" class="player-album-art" title="Open full screen" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
         <div class="track-info">
           <span class="track-name" id="currentSongTitle">No song selected</span>
           <span class="track-artist" id="currentSongArtist"></span>
@@ -277,18 +301,18 @@
     <div class="fs-top-bar">
       <span class="fs-artist-name" id="fsArtistName"></span>
       <div class="fs-actions">
-        <button class="fs-action-btn" title="Share"><i class="fa-solid fa-ellipsis"></i></button>
+        <button class="fs-action-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+        <button class="fs-action-btn" title="Miniplayer"><i class="fa-solid fa-window-restore"></i></button>
+        <button class="fs-action-btn" title="View Artist"><i class="fa-solid fa-user"></i></button>
+        <button class="fs-action-btn" title="More"><i class="fa-solid fa-ellipsis"></i></button>
         <button class="fs-action-btn" id="fsExitBtn" title="Exit full screen"><i class="fa-solid fa-down-left-and-up-right-to-center"></i></button>
+        <button class="fs-action-btn" id="fsCloseBtn" title="Close"><i class="fa-solid fa-xmark"></i></button>
       </div>
     </div>
     <div class="fs-content">
-      <img src="/assets/card3img.jpeg" alt="" id="fsAlbumArt" class="fs-album-art">
+      <img src="/assets/card3img.jpeg" alt="" id="fsAlbumArt" class="fs-album-art" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
     </div>
     <div class="fs-bottom">
-      <div class="fs-song-info">
-        <span class="fs-song-title" id="fsSongTitle"></span>
-        <span class="fs-song-artist" id="fsSongArtist"></span>
-      </div>
       <div class="fs-bottom-sections">
         <div class="fs-credits-section">
           <div class="fs-section-header">
