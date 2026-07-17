@@ -3,11 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spotify - Web Player: Music for every Moment</title>
-  <meta name="description" content="Spotify Web Player - Listen to music for free. Play your favorite songs, discover new tracks, and build playlists.">
+  <title>pulse - Web Player: Music for every Moment</title>
+  <meta name="description" content="pulse Web Player - Listen to music for free. Play your favorite songs, discover new tracks, and build playlists.">
   <link rel="icon" type="image/png" href="/assets/main-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/style.css?v=3.2">
+  <link rel="stylesheet" href="/pulse.css?v=1.0">
 </head>
 <body>
   <!-- Flash Messages -->
@@ -38,8 +41,8 @@
     <!-- ===== TOP BAR ===== -->
     <header class="top-bar">
       <div class="top-bar-left">
-        <a href="/spotify" class="spotify-logo-link" title="Spotify">
-          <svg viewBox="0 0 24 24" height="32" width="32" fill="#fff" class="spotify-logo">
+        <a href="/spotify" class="spotify-logo-link" title="pulse">
+          <svg viewBox="0 0 24 24" height="32" width="32" fill="currentColor" class="spotify-logo">
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.892-.982-.336.076-.67-.135-.746-.47-.077-.337.135-.67.472-.747 3.854-.88 7.15-.508 9.818 1.127.294.18.387.563.208.865zm1.224-2.723c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.078-1.182-.413.125-.85-.107-.978-.52-.128-.414.107-.85.52-.978 3.66-1.11 8.225-.565 11.35 1.354.366.226.486.707.26 1.066zm.105-2.81c-3.263-1.937-8.643-2.12-11.758-1.173-.5.152-1.025-.13-1.177-.63-.153-.5.13-1.026.63-1.178 3.614-1.098 9.544-.886 13.3 1.344.45.267.6.845.333 1.295-.266.45-.845.6-1.295.333z"/>
           </svg>
         </a>
@@ -150,6 +153,26 @@
 
       <!-- ===== MAIN CONTENT ===== -->
       <main class="main-content" id="mainContent">
+        <!-- Hero greeting -->
+        <section class="hero">
+          <div class="hero-eyebrow">Your frequency</div>
+          <h1 id="greeting">Good evening</h1>
+          <p class="hero-sub">Pick up where you left off, or discover something new.</p>
+        </section>
+
+        <!-- Quick picks (top of allListings). Marked as .track-row so the global
+             event.js click handler plays them without any JS changes. -->
+        <% if (allListings.length > 0) { %>
+          <div class="quick-grid">
+            <% allListings.slice(0, 6).forEach(function(listing) { %>
+              <div class="quick-card track-row" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>" data-thumbnail="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>">
+                <img src="<%= listing.image ? listing.image : '/assets/card3img.jpeg' %>" alt="<%= listing.title %>" onerror="if(this.src.includes('maxresdefault.jpg')){this.src=this.src.replace('maxresdefault.jpg','hqdefault.jpg');}else{this.src='/assets/card3img.jpeg';}">
+                <span class="quick-title"><%= listing.title %></span>
+              </div>
+            <% }); %>
+          </div>
+        <% } %>
+
         <!-- Trending / Browse sections (populated by JS) -->
         <div id="trendingContainer"></div>
 
@@ -245,7 +268,7 @@
     <!-- ===== PREVIEW BANNER ===== -->
     <div class="preview-banner">
       <div class="banner-content">
-        <p class="banner-title">Preview of Spotify</p>
+        <p class="banner-title">Preview of pulse</p>
         <p class="banner-subtitle">Sign up to get unlimited songs and podcasts with occasional ads. No credit card needed.</p>
       </div>
       <button class="btn-signup-free">Sign up free</button>
@@ -275,11 +298,11 @@
           <button id="btnRepeat" title="Enable repeat"><i class="fa-solid fa-repeat"></i></button>
         </div>
         <div class="progress-row">
-          <span id="currentTime">1:03</span>
+          <span id="currentTime">0:00</span>
           <div class="progress-bar-wrap">
-            <input type="range" id="progress" min="0" max="100" value="28">
+            <input type="range" id="progress" min="0" max="100" value="0">
           </div>
-          <span id="totalTime">3:46</span>
+          <span id="totalTime">0:00</span>
         </div>
       </div>
 
