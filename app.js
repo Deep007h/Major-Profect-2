@@ -5,7 +5,7 @@ const flash = require("connect-flash");
 const methodOverride = require("method-override");
 const catchAsync = require("./utils/catchAsync");
 const ExpressError = require("./utils/ExpressError");
-const { searchSongs, getStreamUrl } = require("./utils/youtube");
+const { searchSongs, getStreamUrl, getTrending } = require("./utils/youtube");
 
 const app = express();
 const Listing = require("./models/schema");
@@ -137,6 +137,14 @@ app.get(
     }
 
     res.json(streamData);
+  })
+);
+
+app.get(
+  "/api/browse",
+  catchAsync(async (req, res) => {
+    const sections = await getTrending();
+    res.json({ sections });
   })
 );
 

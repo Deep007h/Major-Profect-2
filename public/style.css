@@ -272,6 +272,105 @@ a { text-decoration: none; color: inherit; }
   font-weight: 700;
 }
 
+/* ===== TRENDING CAROUSEL ===== */
+.trending-section {
+  padding: 0 24px 24px;
+}
+.trending-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.trending-section-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+.trending-section-header a {
+  color: #b3b3b3;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+.trending-section-header a:hover { color: #fff; }
+
+.trending-carousel {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding-bottom: 8px;
+}
+.trending-carousel::-webkit-scrollbar { height: 6px; }
+.trending-carousel::-webkit-scrollbar-track { background: transparent; }
+.trending-carousel::-webkit-scrollbar-thumb { background: #535353; border-radius: 3px; }
+
+.trending-card {
+  min-width: 170px;
+  max-width: 170px;
+  background: #181818;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: background .3s;
+  flex-shrink: 0;
+  position: relative;
+}
+.trending-card:hover { background: #282828; }
+.trending-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.trending-card .trending-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trending-card .trending-subtitle {
+  font-size: 12px;
+  color: #b3b3b3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trending-card .play-btn-overlay {
+  position: absolute;
+  bottom: 76px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #1ed760;
+  border: none;
+  color: #000;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .3s;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+.trending-card:hover .play-btn-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+.trending-card .play-btn-overlay:hover {
+  transform: scale(1.06) translateY(0);
+  background: #1fdf64;
+}
+
 /* ===== CONTENT SECTION ===== */
 .content-section {
   padding: 0 24px 24px;

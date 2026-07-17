@@ -195,8 +195,63 @@ if (searchInput) {
   });
 }
 
+function setGreeting() {
+  const el = document.getElementById("greeting");
+  if (!el) return;
+  const h = new Date().getHours();
+  if (h < 12) el.textContent = "Good morning";
+  else if (h < 18) el.textContent = "Good afternoon";
+  else el.textContent = "Good evening";
+}
+
+function renderTrendingSections(sections) {
+  const container = document.getElementById("trendingContainer");
+  if (!container) return;
+  container.innerHTML = sections.map(section => `
+    <div class="trending-section">
+      <div class="trending-section-header">
+        <h2>${section.title}</h2>
+        <a href="#">Show all</a>
+      </div>
+      <div class="trending-carousel">
+        ${section.items.map(item => `
+          <div class="trending-card" data-video-id="${item.videoId || ''}" data-browse-id="${item.browseId || ''}" data-title="${(item.title || '').replace(/'/g, "\\'")}" data-subtitle="${(item.subtitle || '').replace(/'/g, "\\'")}">
+            <img src="${item.thumbnail || '/assets/card3img.jpeg'}" alt="" onerror="this.src='/assets/card3img.jpeg'">
+            <div class="trending-title">${item.title}</div>
+            <div class="trending-subtitle">${item.subtitle}</div>
+            <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+
+  container.addEventListener("click", function (e) {
+    const card = e.target.closest(".trending-card");
+    if (!card) return;
+    const videoId = card.dataset.videoId;
+    if (videoId) {
+      const title = card.dataset.title || "Unknown";
+      const subtitle = card.dataset.subtitle || "";
+      const img = card.querySelector("img")?.src || "/assets/card3img.jpeg";
+      playSong(videoId, title, subtitle, img);
+    }
+  });
+}
+
 // --- DOM ready ---
 document.addEventListener("DOMContentLoaded", function () {
+  setGreeting();
+
+  fetch("/api/browse")
+    .then(r => r.json())
+    .then(data => {
+      if (data.sections && data.sections.length > 0) {
+        renderTrendingSections(data.sections);
+      }
+    })
+    .catch(e => console.error("Browse error:", e));
+
   // Sidebar playlist click
   const sidebarPlaylist = document.getElementById("sidebarPlaylist");
   if (sidebarPlaylist) {

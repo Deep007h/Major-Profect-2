@@ -158,4 +158,69 @@ async function getStreamUrl(videoId) {
   }
 }
 
-module.exports = { searchSongs, getStreamUrl };
+async function getTrending() {
+  const body = {
+    context: {
+      client: {
+        clientName: 'WEB_REMIX',
+        clientVersion: '1.20250101.00.00',
+        hl: 'en',
+        gl: 'US'
+      }
+    }
+  };
+
+  try {
+    const res = await axios.post(
+      `${YT_MUSICE_URL}/browse?key=${API_KEY}`,
+      body,
+      { headers: createHeaders(), timeout: 10000 }
+    );
+
+    const sections = res.data.contents?.singleColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+    const results = [];
+
+    for (const section of sections) {
+      const shelf = section.musicCarouselShelfRenderer;
+      if (!shelf) continue;
+
+      const title = shelf.header?.musicCarouselShelfBasicHeaderRenderer?.title?.runs?.[0]?.text || '';
+      if (!title) continue;
+
+      const items = [];
+      for (const item of (shelf.contents || [])) {
+        const twoRow = item.musicTwoRowItemRenderer;
+        if (!twoRow) continue;
+
+        const itemTitle = twoRow.title?.runs?.[0]?.text || '';
+        const subtitle = twoRow.subtitle?.runs?.map(r => r.text).join('') || '';
+        const thumbnail = twoRow.thumbnailRenderer?.musicThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url ||
+          twoRow.thumbnailRenderer?.playlistVideoThumbnailRenderer?.thumbnail?.thumbnails?.[0]?.url || '';
+
+        let videoId = '';
+        let browseId = '';
+        const nav = twoRow.navigationEndpoint;
+        if (nav?.watchEndpoint?.videoId) {
+          videoId = nav.watchEndpoint.videoId;
+        } else if (nav?.browseEndpoint?.browseId) {
+          browseId = nav.browseEndpoint.browseId;
+        }
+
+        if (itemTitle) {
+          items.push({ title: itemTitle, subtitle, thumbnail, videoId, browseId });
+        }
+      }
+
+      if (items.length > 0) {
+        results.push({ title, items });
+      }
+    }
+
+    return results;
+  } catch (e) {
+    console.error('Failed to get trending:', e.message);
+    return [];
+  }
+}
+
+module.exports = { searchSongs, getStreamUrl, getTrending };
