@@ -7,8 +7,33 @@ const db = Datastore.create({
   autoload: true
 });
 
-function hashPassword(password) {
+// Legacy unsalted SHA-256 (kept only to verify pre-existing accounts)
+function legacyHash(password) {
   return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+// New salted scrypt hashing: stored as "scrypt$<saltHex>$<hashHex>"
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derived = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(password, stored) {
+  if (typeof stored !== 'string') return false;
+
+  if (stored.startsWith('scrypt$')) {
+    const [, salt, hash] = stored.split('$');
+    if (!salt || !hash) return false;
+    const derived = crypto.scryptSync(password, salt, 64);
+    const hashBuf = Buffer.from(hash, 'hex');
+    return hashBuf.length === derived.length && crypto.timingSafeEqual(hashBuf, derived);
+  }
+
+  // Legacy SHA-256 verification (constant-time)
+  const legacy = Buffer.from(legacyHash(password), 'hex');
+  const storedBuf = Buffer.from(stored, 'hex');
+  return storedBuf.length === legacy.length && crypto.timingSafeEqual(storedBuf, legacy);
 }
 
 class User {
@@ -35,8 +60,15 @@ class User {
   static async authenticate(username, password) {
     if (!username || !password) return null;
     const cleanUsername = username.trim().toLowerCase();
-    const hashedPassword = hashPassword(password);
-    const user = await db.findOne({ username: cleanUsername, password: hashedPassword });
+    const user = await db.findOne({ username: cleanUsername });
+    if (!user || !verifyPassword(password, user.password)) return null;
+
+    // Transparently upgrade legacy SHA-256 hashes to salted scrypt on login
+    if (!user.password.startsWith('scrypt$')) {
+      const upgraded = hashPassword(password);
+      await db.update({ _id: user._id }, { $set: { password: upgraded } });
+      user.password = upgraded;
+    }
     return user;
   }
 
