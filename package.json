@@ -1,7 +1,7 @@
 {
   "name": "spotify-clone",
-  "version": "1.0.0",
-  "description": "Music Streaming Platform - Spotify Clone built with Node.js, Express, MongoDB GridFS",
+  "version": "2.0.0",
+  "description": "Music Streaming Platform - YouTube Music player built with Node.js, Express, InnerTube API",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -15,10 +15,9 @@
   "keywords": [
     "music",
     "streaming",
-    "spotify",
-    "clone",
-    "mongodb",
-    "gridfs",
+    "youtube",
+    "music",
+    "innertube",
     "nodejs",
     "express"
   ],
@@ -29,14 +28,15 @@
   },
   "homepage": "https://github.com/Deep007h/Major-Profect-2#readme",
   "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "axios": "^1.7.0",
     "connect-flash": "^0.1.1",
-    "dotenv": "^16.4.7",
     "ejs": "^3.1.10",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
     "method-override": "^3.0.0",
-    "mongoose": "^8.9.5",
-    "multer": "^1.4.5-lts.1"
+    "nedb-promises": "^6.2.3",
+    "youtube-dl-exec": "^3.1.9"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
