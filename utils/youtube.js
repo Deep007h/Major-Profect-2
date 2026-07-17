@@ -2,8 +2,8 @@ const { execFile } = require('child_process');
 const axios = require('axios');
 
 const YT_MUSICE_URL = 'https://music.youtube.com/youtubei/v1';
-const API_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-const YT_DLP = '/tmp/yt-dlp';
+const API_KEY = process.env.YT_INNERTUBE_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+const YT_DLP = process.env.YT_DLP_PATH || '/tmp/yt-dlp';
 
 function shuffleArray(array) {
   const arr = [...array];
