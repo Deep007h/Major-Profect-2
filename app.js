@@ -28,11 +28,19 @@ app.use(session(sessionOptions));
 app.use(flash());
 app.use(methodOverride("_method"));
 
-app.use((req, res, next) => {
+const User = require("./models/user");
+
+app.use(catchAsync(async (req, res, next) => {
   res.locals.success = req.flash("success");
   res.locals.error = req.flash("error");
+  res.locals.user = req.session.user || null;
+  if (req.session.user) {
+    res.locals.savedSongs = await User.getSavedSongs(req.session.user._id);
+  } else {
+    res.locals.savedSongs = [];
+  }
   next();
-});
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -59,6 +67,89 @@ app.get("/spotify/upload", (req, res) => {
 app.get("/spotify/login", (req, res) => {
   res.render("login.ejs");
 });
+
+app.get("/spotify/signup", (req, res) => {
+  res.render("signup.ejs");
+});
+
+app.post(
+  "/spotify/signup",
+  catchAsync(async (req, res) => {
+    const { username, password } = req.body;
+    try {
+      await User.register(username, password);
+      req.flash("success", "Registration successful! Please log in.");
+      res.redirect("/spotify/login");
+    } catch (e) {
+      req.flash("error", e.message || "Registration failed.");
+      res.redirect("/spotify/signup");
+    }
+  })
+);
+
+app.post(
+  "/spotify/login",
+  catchAsync(async (req, res) => {
+    const { username, password } = req.body;
+    const user = await User.authenticate(username, password);
+    if (!user) {
+      req.flash("error", "Invalid username or password.");
+      return res.redirect("/spotify/login");
+    }
+    req.session.user = { _id: user._id, username: user.username };
+    req.flash("success", `Welcome back, ${user.username}!`);
+    res.redirect("/spotify");
+  })
+);
+
+app.get("/spotify/logout", (req, res) => {
+  req.session.user = null;
+  req.flash("success", "Logged out successfully!");
+  res.redirect("/spotify");
+});
+
+app.post(
+  "/api/library/save",
+  catchAsync(async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: "Please log in to save songs." });
+    }
+    const { videoId, title, artist, image } = req.body;
+    if (!videoId || !title) {
+      return res.status(400).json({ error: "Video ID and Title are required." });
+    }
+    const saved = await User.saveSong(req.session.user._id, { videoId, title, artist, image });
+    res.json({ success: true, savedSongs: saved });
+  })
+);
+
+app.post(
+  "/api/library/unsave",
+  catchAsync(async (req, res) => {
+    if (!req.session.user) {
+      return res.status(401).json({ error: "Please log in." });
+    }
+    const { videoId } = req.body;
+    if (!videoId) {
+      return res.status(400).json({ error: "Video ID is required." });
+    }
+    const saved = await User.unsaveSong(req.session.user._id, videoId);
+    res.json({ success: true, savedSongs: saved });
+  })
+);
+
+app.get(
+  "/api/library/status/:videoId",
+  catchAsync(async (req, res) => {
+    if (!req.session.user) {
+      return res.json({ liked: false });
+    }
+    const { videoId } = req.params;
+    const savedSongs = await User.getSavedSongs(req.session.user._id);
+    const liked = savedSongs.some(s => s.videoId === videoId);
+    res.json({ liked });
+  })
+);
 
 app.get("/spotify/add", (req, res) => {
   res.render("listing_song.ejs");
@@ -147,6 +238,28 @@ app.get(
     res.json({ sections });
   })
 );
+
+// Artist page (server-rendered)
+app.get('/spotify/artist/:browseId', catchAsync(async (req, res) => {
+  const { browseId } = req.params;
+  const { getArtistPage } = require('./utils/youtube');
+  const artistData = await getArtistPage(browseId);
+  if (!artistData || !artistData.name) {
+    throw new ExpressError(404, 'Artist not found');
+  }
+  res.render('artist.ejs', { artistData });
+}));
+
+// Artist page API (for AJAX loading)
+app.get('/api/artist/:browseId', catchAsync(async (req, res) => {
+  const { browseId } = req.params;
+  const { getArtistPage } = require('./utils/youtube');
+  const artistData = await getArtistPage(browseId);
+  if (!artistData) {
+    return res.status(404).json({ error: 'Artist not found' });
+  }
+  res.json(artistData);
+}));
 
 app.all("*", (req, res, next) => {
   next(new ExpressError(404, "Page Not Found"));
