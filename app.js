@@ -1,11 +1,20 @@
+require("dotenv").config();
+
 const express = require("express");
 const path = require("path");
+const fs = require("fs");
 const session = require("express-session");
 const flash = require("connect-flash");
 const methodOverride = require("method-override");
 const catchAsync = require("./utils/catchAsync");
 const ExpressError = require("./utils/ExpressError");
 const { searchSongs, getStreamUrl, getTrending } = require("./utils/youtube");
+
+// Ensure the NeDB data directory exists (NeDB does not create it automatically)
+const DATA_DIR = path.join(__dirname, "data");
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
 
 const app = express();
 
@@ -46,7 +55,7 @@ const runMigration = async () => {
       if (listing.image) {
         const repaired = repairUrl(listing.image, listing.videoId);
         if (repaired !== listing.image) {
-          await Listing.update({ _id: listing._id }, { $set: { image: repaired } });
+          await Listing.db.update({ _id: listing._id }, { $set: { image: repaired } });
         }
       }
     }
@@ -82,7 +91,7 @@ const sessionOptions = {
   resave: false,
   saveUninitialized: true,
   cookie: {
-    expires: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    // maxAge alone controls expiry; `expires` must be a Date, not a number
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
     sameSite: "lax",
