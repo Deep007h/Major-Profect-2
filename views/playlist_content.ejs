@@ -1,0 +1,84 @@
+<div class="playlist-detail-page" data-playlist-id="<%= playlist.id %>">
+  <!-- Playlist Header Banner -->
+  <div class="playlist-header-banner">
+    <div class="playlist-cover-wrap">
+      <div class="playlist-cover-placeholder">
+        <i class="fa-solid fa-music"></i>
+      </div>
+    </div>
+    <div class="playlist-header-info">
+      <span class="playlist-badge">Playlist</span>
+      <h1 class="playlist-title-header"><%= playlist.name %></h1>
+      <p class="playlist-description"><%= playlist.description || 'A custom playlist created on MusicKey.' %></p>
+      <div class="playlist-metadata">
+        <span class="owner"><%= locals.user ? locals.user.username : 'User' %></span>
+        <span class="dot">•</span>
+        <span class="song-count"><%= playlist.songs ? playlist.songs.length : 0 %> songs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Playlist Action Row -->
+  <div class="playlist-action-row">
+    <% if (playlist.songs && playlist.songs.length > 0) { %>
+      <button class="playlist-play-btn" id="btnPlayPlaylist" title="Play">
+        <i class="fa-solid fa-play"></i>
+      </button>
+    <% } %>
+    <button class="action-btn text-danger" id="btnDeletePlaylist" title="Delete Playlist" data-playlist-id="<%= playlist.id %>">
+      <i class="fa-solid fa-trash-can"></i> Delete Playlist
+    </button>
+  </div>
+
+  <!-- Playlist Tracks Table -->
+  <div class="playlist-tracks-section">
+    <% if (playlist.songs && playlist.songs.length > 0) { %>
+      <div class="tracks-table">
+        <div class="tracks-table-header">
+          <div class="header-col-num">#</div>
+          <div class="header-col-title">Title</div>
+          <div class="header-col-action"></div>
+        </div>
+        <div class="tracks-table-body">
+          <% playlist.songs.forEach(function(song, index) { %>
+            <div class="track-row" data-video-id="<%= song.videoId %>" data-title="<%= song.title %>" data-artist="<%= song.artist %>" data-thumbnail="<%= song.image %>">
+              <div class="track-number">
+                <span class="track-num-text"><%= index + 1 %></span>
+                <button class="track-play-icon"><i class="fa-solid fa-play"></i></button>
+              </div>
+              <div class="track-title-col">
+                <img class="track-img" src="<%= song.image %>" alt="<%= song.title %>" onerror="recoverThumbnail(this)">
+                <div class="track-title-info">
+                  <span class="track-title-text"><%= song.title %></span>
+                  <span class="track-artists-text"><%= song.artist %></span>
+                </div>
+              </div>
+              <div class="track-action-col">
+                <button class="btn-remove-from-playlist" data-video-id="<%= song.videoId %>" title="Remove from playlist">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="empty-playlist-msg">
+        <div class="music-icon"><i class="fa-solid fa-music"></i></div>
+        <h3>This playlist is empty</h3>
+        <p>Use the search bar below to find and add tracks.</p>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Search / Suggestion Section to Add Songs -->
+  <div class="playlist-add-section">
+    <h2>Let's add something to your playlist</h2>
+    <div class="playlist-search-box-wrap">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" id="playlistSearchInput" placeholder="Search for songs..." autocomplete="off">
+    </div>
+    
+    <div class="playlist-search-results" id="playlistSearchResults" style="display: none;"></div>
+  </div>
+</div>

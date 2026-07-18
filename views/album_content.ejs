@@ -1,0 +1,126 @@
+<span id="spaPageTitle" style="display:none;" data-title="<%= albumData.title || 'Album' %> | Spotify - Web Player"></span>
+<%
+  let artistName = 'Various Artists';
+  let albumYear = '2026';
+  let albumType = 'Album';
+
+  if (albumData.artist) {
+    const parts = albumData.artist.split(' · ');
+    if (parts.length > 1) {
+      artistName = parts[0];
+      albumType = parts[1];
+      if (parts[2]) albumYear = parts[2];
+    } else {
+      artistName = albumData.artist;
+    }
+  }
+
+  // Fallback if the parser didn't fetch artist or year cleanly
+  if (artistName.toLowerCase() === 'album' || artistName.toLowerCase() === 'single') {
+    artistName = albumData.tracks[0]?.artist || 'Various Artists';
+  }
+
+  // Calculate total album duration
+  let totalSecs = 0;
+  albumData.tracks.forEach(t => {
+    if (t.duration) {
+      const parts = t.duration.split(':');
+      if (parts.length === 2) {
+        totalSecs += parseInt(parts[0]) * 60 + parseInt(parts[1]);
+      } else if (parts.length === 3) {
+        totalSecs += parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+      }
+    }
+  });
+
+  let durationText = '';
+  if (totalSecs > 0) {
+    const h = Math.floor(totalSecs / 3600);
+    const m = Math.floor((totalSecs % 3600) / 60);
+    const s = totalSecs % 60;
+    if (h > 0) {
+      durationText = `, ${h} hr ${m} min`;
+    } else {
+      durationText = `, ${m} min ${s} sec`;
+    }
+  }
+
+  const cover = albumData.thumbnail || albumData.tracks[0]?.thumbnail || '';
+%>
+
+<%
+  // Simple hash function for title to select a premium background color
+  const hash = (albumData.title || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const premiumColors = [
+    '#6a5f4c', // Khaki/Brown (matches Majhaestic)
+    '#5c6e58', // Sage/Olive Green
+    '#7e585c', // Muted Rose/Crimson
+    '#52658f', // Steel Blue
+    '#70528f', // Muted Purple
+    '#5c5c5c', // Charcoal/Slate
+    '#706652', // Muted Bronze
+    '#527065'  // Deep Teal
+  ];
+  const heroColor = premiumColors[hash % premiumColors.length];
+%>
+
+<section class="album-hero-page" style="background: linear-gradient(180deg, <%= heroColor %> 0%, #121212 100%);">
+  <div class="album-hero-content">
+    <img class="album-hero-cover" src="<%= cover %>" alt="<%= albumData.title %>" onerror="recoverThumbnail(this)">
+    <div class="album-hero-details">
+      <div class="album-kind"><%= albumType %></div>
+      <h1 class="album-title-text"><%= albumData.title || 'Untitled album' %></h1>
+      <div class="album-meta">
+        <!-- Circular artist avatar placeholder -->
+        <img class="album-artist-avatar" src="<%= albumData.tracks[0]?.thumbnail || cover %>" alt="">
+        <span class="album-artist-name"><%= artistName %></span>
+        <span class="album-meta-details"> · <%= albumYear %> · <%= albumData.tracks.length %> songs<%= durationText %></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="album-track-section">
+  <!-- Toolbar matching the screenshot -->
+  <div class="album-toolbar">
+    <div class="album-toolbar-left">
+      <button id="albumPlayBtn" class="album-play-btn" title="Play album">
+        <i class="fa-solid fa-play"></i>
+      </button>
+      <button class="album-badge-btn" title="Album Pick">
+        <img src="<%= cover %>" alt="">
+      </button>
+      <button class="album-tool-btn" title="Shuffle"><i class="fa-solid fa-shuffle"></i></button>
+      <button class="album-tool-btn" title="Add to Library"><i class="fa-regular fa-circle-plus"></i></button>
+      <button class="album-tool-btn" title="Download"><i class="fa-regular fa-circle-down"></i></button>
+      <button class="album-tool-btn" title="More options"><i class="fa-solid fa-ellipsis"></i></button>
+    </div>
+    <div class="album-toolbar-right">
+      <span class="album-list-label">List <i class="fa-solid fa-list"></i></span>
+    </div>
+  </div>
+
+  <div class="album-track-header">
+    <span class="track-header-num">#</span>
+    <span class="track-header-title">Title</span>
+    <span class="album-track-duration"><i class="fa-regular fa-clock"></i></span>
+  </div>
+  
+  <div class="album-divider-line"></div>
+
+  <div class="album-tracks-table">
+    <% albumData.tracks.forEach((track, index) => { %>
+      <div class="track-row album-track-row" data-video-id="<%= track.videoId %>" data-title="<%= track.title %>" data-artist="<%= track.artist || artistName %>" data-thumbnail="<%= track.thumbnail || cover %>">
+        <div class="album-track-number">
+          <span class="track-num-text"><%= index + 1 %></span>
+          <button class="track-play-icon"><i class="fa-solid fa-play"></i></button>
+        </div>
+        <div class="album-track-info">
+          <div class="album-track-title"><%= track.title %></div>
+          <div class="album-track-artist"><%= track.artist || artistName %></div>
+        </div>
+        <span class="album-track-duration"><%= track.duration || '' %></span>
+      </div>
+    <% }) %>
+  </div>
+</section>

@@ -1,0 +1,7 @@
+{
+  "ignore": [
+    "data/*",
+    "sessions/*",
+    "node_modules/*"
+  ]
+}

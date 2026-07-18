@@ -1,9 +1,16 @@
 const { execFile } = require('child_process');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 
 const YT_MUSICE_URL = 'https://music.youtube.com/youtubei/v1';
 const API_KEY = process.env.YT_INNERTUBE_KEY || 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-const YT_DLP = process.env.YT_DLP_PATH || '/tmp/yt-dlp';
+// Use an explicitly configured binary when supplied; otherwise use the
+// yt-dlp executable installed with this project instead of a machine-specific
+// /tmp path that disappears after a restart.
+const bundledYtDlp = path.join(__dirname, '..', 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp');
+const configuredYtDlp = process.env.YT_DLP_PATH;
+const YT_DLP = configuredYtDlp && fs.existsSync(configuredYtDlp) ? configuredYtDlp : bundledYtDlp;
 
 function shuffleArray(array) {
   const arr = [...array];
@@ -16,7 +23,9 @@ function shuffleArray(array) {
 
 function getHighResThumbnail(thumbnails, videoId = null) {
   if (videoId) {
-    return `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg`;
+    // hqdefault is available for virtually every playable YouTube video. Using
+    // it directly avoids the slow failed maxres request before preview renders.
+    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
   }
   if (!thumbnails || thumbnails.length === 0) return '';
   let url = thumbnails[thumbnails.length - 1].url || '';
@@ -38,7 +47,7 @@ function createHeaders() {
   };
 }
 
-function extractFromRenderer(renderer) {
+function extractFromRenderer(renderer, ignoreBlocker = false) {
   if (!renderer) return null;
 
   const columns = renderer.flexColumns || [];
@@ -60,7 +69,7 @@ function extractFromRenderer(renderer) {
 
   if (!videoId && !browseId) return null;
 
-  // Block videos (non-ATV items)
+  // Block videos (UGC items)
   const overlayEndpoint = renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint;
   const navEndpoint = renderer.navigationEndpoint;
   const getFromEndpoint = (ep) => {
@@ -68,7 +77,7 @@ function extractFromRenderer(renderer) {
            ep?.watchPlaylistEndpoint?.watchEndpointMusicSupportedConfigs?.watchEndpointMusicConfig?.musicVideoType;
   };
   const musicVideoType = getFromEndpoint(overlayEndpoint) || getFromEndpoint(navEndpoint);
-  if (musicVideoType && musicVideoType !== 'MUSIC_VIDEO_TYPE_ATV') {
+  if (!ignoreBlocker && musicVideoType && musicVideoType === 'MUSIC_VIDEO_TYPE_UGC') {
     return null;
   }
 
@@ -77,7 +86,12 @@ function extractFromRenderer(renderer) {
   const thumbnail = getHighResThumbnail(thumbnailList, videoId);
 
   const subtitleColumns = columns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-  const artist = subtitleColumns.map(r => r.text).join('').replace(/•.*$/, '').trim();
+  const text = subtitleColumns.map(r => r.text).join('');
+  const parts = text.split('•').map(p => p.trim());
+  let artist = parts[0];
+  if (parts.length > 1 && (parts[0].toLowerCase() === 'song' || parts[0].toLowerCase() === 'video' || parts[0].toLowerCase() === 'album' || parts[0].toLowerCase() === 'playlist' || parts[0].toLowerCase() === 'single')) {
+    artist = parts[1];
+  }
 
   // Determine type based on browseId or watchEndpoint
   let type = 'song';
@@ -89,7 +103,10 @@ function extractFromRenderer(renderer) {
     }
   }
 
-  return { videoId, browseId, title, artist: type === 'artist' ? 'Artist' : artist, thumbnail, type };
+  const fixedColumns = renderer.fixedColumns || [];
+  const duration = fixedColumns[0]?.musicResponsiveListItemFixedColumnRenderer?.text?.runs?.[0]?.text || '';
+
+  return { videoId, browseId, title, artist: type === 'artist' ? 'Artist' : artist, thumbnail, type, duration };
 }
 
 function parseSearchResults(data) {
@@ -120,7 +137,11 @@ function parseSearchResults(data) {
         const thumbnail = getHighResThumbnail(thumbnailList, videoId);
         
         const subtitle = shelf.subtitle?.runs?.map(r => r.text).join('') || '';
-        const artist = subtitle.replace(/•.*$/, '').trim();
+        const parts = subtitle.split('•').map(p => p.trim());
+        let artist = parts[0];
+        if (parts.length > 1 && (parts[0].toLowerCase() === 'song' || parts[0].toLowerCase() === 'video' || parts[0].toLowerCase() === 'album' || parts[0].toLowerCase() === 'playlist' || parts[0].toLowerCase() === 'single')) {
+          artist = parts[1];
+        }
         
         if ((videoId || browseId) && title) {
           // Block videos (non-ATV items)
@@ -232,43 +253,60 @@ function execYtDlp(args) {
 }
 
 const streamCache = new Map();
+const pendingStreamRequests = new Map();
+const STREAM_CACHE_TTL_MS = 90 * 60 * 1000;
+const MAX_STREAM_CACHE_ENTRIES = 100;
+
+function isValidVideoId(videoId) {
+  return typeof videoId === 'string' && /^[A-Za-z0-9_-]{11}$/.test(videoId);
+}
+
+function pruneStreamCache() {
+  const now = Date.now();
+  for (const [videoId, cached] of streamCache) {
+    if (now - cached.timestamp >= STREAM_CACHE_TTL_MS) streamCache.delete(videoId);
+  }
+  while (streamCache.size > MAX_STREAM_CACHE_ENTRIES) {
+    streamCache.delete(streamCache.keys().next().value);
+  }
+}
 
 async function getStreamUrl(videoId) {
-  if (streamCache.has(videoId)) {
-    const cached = streamCache.get(videoId);
-    if (Date.now() - cached.timestamp < 3 * 60 * 60 * 1000) { // 3 hours cache
-      return cached.data;
-    }
-  }
+  if (!isValidVideoId(videoId)) return null;
+
+  const cached = streamCache.get(videoId);
+  if (cached && Date.now() - cached.timestamp < STREAM_CACHE_TTL_MS) return cached.data;
+  if (pendingStreamRequests.has(videoId)) return pendingStreamRequests.get(videoId);
 
   const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const request = (async () => {
+    try {
+      // -g returns only the media URL, avoiding the much slower metadata extraction path.
+      const streamUrl = await execYtDlp(['-f', 'bestaudio', '--get-url', '--no-playlist', url]);
+      if (!streamUrl) return null;
 
-  try {
-    // Only run the fast -g/--get-url option. This skips metadata fetching (dump-json) entirely.
-    const streamUrl = await execYtDlp(['-f', 'bestaudio', '--get-url', '--no-playlist', url]);
-    if (!streamUrl) return null;
+      const result = {
+        url: streamUrl,
+        mimeType: streamUrl.includes('mime=audio%2F') ? 'audio/webm' : 'audio/mp4',
+        title: 'Unknown',
+        author: 'Unknown',
+        videoId,
+        thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+      };
 
-    const isAudio = streamUrl.includes('mime=audio%2F');
+      streamCache.set(videoId, { data: result, timestamp: Date.now() });
+      pruneStreamCache();
+      return result;
+    } catch (e) {
+      console.error('yt-dlp stream failed:', e.message);
+      return null;
+    } finally {
+      pendingStreamRequests.delete(videoId);
+    }
+  })();
 
-    const result = {
-      url: streamUrl,
-      mimeType: isAudio ? 'audio/webm' : 'audio/mp4',
-      title: 'Unknown',
-      author: 'Unknown',
-      videoId: videoId,
-      thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
-    };
-
-    streamCache.set(videoId, {
-      data: result,
-      timestamp: Date.now()
-    });
-
-    return result;
-  } catch (e) {
-    console.error('yt-dlp stream failed:', e.message);
-    return null;
-  }
+  pendingStreamRequests.set(videoId, request);
+  return request;
 }
 
 let cachedPunjabiArtists = [];
@@ -321,7 +359,7 @@ async function getCuratedArtistList(artists) {
   return Promise.all(promises);
 }
 
-async function getTrending() {
+async function fetchTrending() {
   const body = {
     context: {
       client: {
@@ -431,20 +469,154 @@ async function getTrending() {
       console.error("Failed to load curated English artists:", err.message);
     }
 
-    // Also fetch Punjabi Hits to enrich the feed
+    // Fetch dynamic content rows in parallel
     try {
-      const punjabiSongs = await searchSongs("Punjabi Songs");
-      if (punjabiSongs && punjabiSongs.length > 0) {
-        const punjabiItems = punjabiSongs.filter(item => item.type === 'song' || item.type === 'album');
-        if (punjabiItems.length > 0) {
+      const [punjabiSongs, albumSongs, mixSongs, bollywoodSongs] = await Promise.all([
+        searchSongs("Punjabi Songs").catch(() => []),
+        searchSongs("Karan Aujla Making Memories Album").catch(() => []),
+        searchSongs("English Pop Hits 2026").catch(() => []),
+        searchSongs("Bollywood Romantic Hits").catch(() => [])
+      ]);
+
+      // 1. Trending Punjabi Hits
+      if (punjabiSongs.length > 0) {
+        const items = punjabiSongs.filter(item => item.type === 'song' || item.type === 'album');
+        if (items.length > 0) {
           results.push({
             title: "Trending Punjabi Hits",
-            items: shuffleArray(punjabiItems).slice(0, 10)
+            items: shuffleArray(items).slice(0, 8)
           });
         }
       }
+
+      // 2. Popular albums and singles
+      if (albumSongs.length > 0) {
+        const items = albumSongs.filter(item => item.type === 'album' || item.type === 'song');
+        if (items.length > 0) {
+          results.push({
+            title: "Popular albums and singles",
+            items: shuffleArray(items).slice(0, 8)
+          });
+        }
+      }
+
+      // 3. Popular Radio
+      const popularRadioItems = [
+        {
+          title: "Prem Dhillon Radio",
+          subtitle: "With Sidhu Moose Wala, Karan Aujla and more",
+          thumbnail: "https://yt3.googleusercontent.com/WyNcsd5_HkKIT6KLJHjo-bIL3ayXnBKRBSYFpV2B8QWB-PjkiDg5O7peyZVKv2_ErONKtwne=w544-h544-l90-rj",
+          browseId: "UCW9eEpBfH_gWRc4ac70tj7w",
+          type: "artist"
+        },
+        {
+          title: "Sidhu Moose Wala Radio",
+          subtitle: "With Prem Dhillon, Shubh and more",
+          thumbnail: "https://yt3.ggpht.com/ytc/AIdro_kiQJ0Hhp0O-tdaY1dy81-gSNujjccUlWstnpFr686ZlMk=w544-h544-l90-rj",
+          browseId: "UCIOXXUXQ8y5ivei97JkiBAw",
+          type: "artist"
+        },
+        {
+          title: "Karan Aujla Radio",
+          subtitle: "With Shubh, Diljit Dosanjh and more",
+          thumbnail: "https://lh3.googleusercontent.com/k7sgqqcV5VScaMZtTmS8W_tfouLVBpgyJII0epYE2Vjw1-zzhGgUCV51aHxZn6cmZKKJgUfNlIVpZg=w544-h544-l90-rj",
+          browseId: "UCSmK5WX5U4gdtebWjoL81og",
+          type: "artist"
+        },
+        {
+          title: "Diljit Dosanjh Radio",
+          subtitle: "With Guru Randhawa, Jassi Gill and more",
+          thumbnail: "https://yt3.googleusercontent.com/7EYXXMXY594V8y4sZT2aawmdKgDAGTu5jNm9C-HpR3jY9cZJ0NMxS__nZKBdWZ1PUpJPjc2BAA=w544-h544-l90-rj",
+          browseId: "UCJ2m-WpROlZCiZZID9r7NSQ",
+          type: "artist"
+        },
+        {
+          title: "The Weeknd Radio",
+          subtitle: "With Drake, Travis Scott and more",
+          thumbnail: "https://lh3.googleusercontent.com/U-SAmNOu4TynE818gLCfKsuHZ0U5YNEtO9mrjSI9WCCKERs98LzrCal5kajBBTQNwdcisoB2Bn-pHp4=w544-h544-l90-rj",
+          browseId: "UClYV6hHlupm_S_ObS1W-DYw",
+          type: "artist"
+        },
+        {
+          title: "Drake Radio",
+          subtitle: "With Travis Scott, The Weeknd and more",
+          thumbnail: "https://yt3.googleusercontent.com/qqxv5qVDpNvVobACzp-FFrArjlSs-NayarhdG8P7XCvTpfpynDVbkOv4W7USru2NKaQbmWbWcopm6grH=w544-h544-l90-rj",
+          browseId: "UCU6cE7pdJPc6DU2jSrKEsdQ",
+          type: "artist"
+        },
+        {
+          title: "Taylor Swift Radio",
+          subtitle: "With Ed Sheeran, Bruno Mars and more",
+          thumbnail: "https://yt3.googleusercontent.com/RCpTA6EXJQyjVFDosWOKa2SMmqkua_lA9mHPDWWciLwgqpZLz-k8rXWRF_367trrQ7up9BUwCbk6kRk=w544-h544-l90-rj",
+          browseId: "UCPC0L1d253x-KuMNwa05TpA",
+          type: "artist"
+        }
+      ];
+      results.push({
+        title: "Popular radio",
+        items: popularRadioItems
+      });
+
+      // 4. Diverse mix
+      if (mixSongs.length > 0) {
+        const items = mixSongs.filter(item => item.type === 'song' || item.type === 'album');
+        if (items.length > 0) {
+          results.push({
+            title: "Diverse mix",
+            items: shuffleArray(items).slice(0, 8)
+          });
+        }
+      }
+
+      // 5. Recommended for you
+      if (bollywoodSongs.length > 0) {
+        const items = bollywoodSongs.filter(item => item.type === 'song' || item.type === 'album');
+        if (items.length > 0) {
+          results.push({
+            title: "Recommended for you",
+            items: shuffleArray(items).slice(0, 8)
+          });
+        }
+      }
+
+      // 6. Charts
+      const chartsItems = [
+        {
+          title: "Top 50 - India",
+          subtitle: "Your daily update of the most played tracks in India.",
+          thumbnail: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=544&h=544&fit=crop",
+          videoId: "cWIGUPQqnSk",
+          type: "playlist"
+        },
+        {
+          title: "Top 50 - Global",
+          subtitle: "Your daily update of the most played tracks right now.",
+          thumbnail: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=544&h=544&fit=crop",
+          videoId: "Oy9FJVgrlb0",
+          type: "playlist"
+        },
+        {
+          title: "Viral 50 - India",
+          subtitle: "Your daily update of the most viral tracks in India.",
+          thumbnail: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=544&h=544&fit=crop",
+          videoId: "SJQfPMkH8OY",
+          type: "playlist"
+        },
+        {
+          title: "Viral 50 - Global",
+          subtitle: "Your daily update of the most viral tracks right now.",
+          thumbnail: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=544&h=544&fit=crop",
+          videoId: "tE6JdwtCZ2o",
+          type: "playlist"
+        }
+      ];
+      results.push({
+        title: "Featured Charts",
+        items: chartsItems
+      });
+
     } catch (err) {
-      console.error("Failed to append Punjabi hits:", err.message);
+      console.error("Failed to build enriched categories:", err.message);
     }
 
     return results;
@@ -452,6 +624,38 @@ async function getTrending() {
     console.error('Failed to get trending:', e.message);
     return [];
   }
+}
+
+// Keep the previous feed available while a fresh one is fetched. This makes a
+// refresh fast without freezing the user on the same artists and albums.
+let trendingCache = null;
+let trendingCacheTimestamp = 0;
+let pendingTrendingRequest = null;
+
+function shuffledFeed(feed) {
+  return (feed || []).map(section => ({
+    ...section,
+    items: shuffleArray(section.items || [])
+  }));
+}
+
+async function getTrending() {
+  if (pendingTrendingRequest) return trendingCache ? shuffledFeed(trendingCache) : pendingTrendingRequest;
+
+  const refresh = fetchTrending()
+    .then(results => {
+      trendingCache = results;
+      trendingCacheTimestamp = Date.now();
+      return results;
+    })
+    .finally(() => {
+      pendingTrendingRequest = null;
+    });
+  pendingTrendingRequest = refresh;
+
+  // On later refreshes, return immediately and let the next request receive
+  // the newly fetched feed. The first request still waits for real data.
+  return trendingCache ? shuffledFeed(trendingCache) : refresh;
 }
 
 function parseCarouselItem(item) {
@@ -625,6 +829,35 @@ async function getArtistPage(browseId) {
       artistPick.label = "Album of the year";
     }
 
+    // Enrich popularSongs to have a larger list (up to 30 tracks)
+    if (name) {
+      try {
+        const extraResults = await searchSongs(`${name} songs`);
+        const seenIds = new Set(popularSongs.map(s => s.videoId));
+        extraResults.forEach(r => {
+          if (r.type === 'song' && !seenIds.has(r.videoId) && popularSongs.length < 30) {
+            const matchesArtist = r.artist && (
+              r.artist.toLowerCase().includes(name.toLowerCase()) ||
+              name.toLowerCase().includes(r.artist.toLowerCase())
+            );
+            if (matchesArtist) {
+              seenIds.add(r.videoId);
+              popularSongs.push({
+                videoId: r.videoId,
+                title: r.title,
+                thumbnail: r.thumbnail,
+                artists: r.artist,
+                plays: '1,000,000+',
+                duration: '3:30'
+              });
+            }
+          }
+        });
+      } catch (err) {
+        console.error("Failed to fetch extra songs for artist page:", err.message);
+      }
+    }
+
     return {
       name,
       thumbnail,
@@ -686,24 +919,31 @@ async function getAlbum(browseId) {
     );
 
     const data = res.data;
+    const detailHeader = data.header?.musicDetailHeaderRenderer ||
+      data.header?.musicImmersiveHeaderRenderer || data.header?.musicVisualHeaderRenderer || {};
+    const albumTitle = detailHeader.title?.runs?.map(run => run.text).join('') || '';
+    const albumArtist = detailHeader.subtitle?.runs?.map(run => run.text).join('') || '';
+    const albumThumbs = detailHeader.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+    const albumThumbnail = albumThumbs.length ? albumThumbs[albumThumbs.length - 1].url : '';
     
     // Parse tracks using the recursive scanner
     const renderers = findItemRenderers(data);
     const tracks = [];
     
     for (const r of renderers) {
-      const parsed = extractFromRenderer(r);
+      const parsed = extractFromRenderer(r, true);
       if (parsed && parsed.videoId) {
         tracks.push({
           videoId: parsed.videoId,
           title: parsed.title,
           artist: parsed.artist,
-          thumbnail: parsed.thumbnail
+          thumbnail: parsed.thumbnail,
+          duration: parsed.duration
         });
       }
     }
 
-    return { title: '', artist: '', tracks };
+    return { title: albumTitle, artist: albumArtist, thumbnail: albumThumbnail, tracks };
   } catch (e) {
     console.error('Failed to get album details:', e.message);
     return null;

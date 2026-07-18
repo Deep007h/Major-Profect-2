@@ -1,0 +1,30 @@
+<div class="podcasts-page">
+  <div class="podcasts-header">
+    <h1>Explore Podcasts</h1>
+    <p>Discover the best audio programs, talk shows, and stories curated from YouTube Music.</p>
+  </div>
+
+  <div class="content-section">
+    <div class="card-row expanded">
+      <% if (podcasts && podcasts.length > 0) { %>
+        <% podcasts.forEach(function(show) { %>
+          <% const browseId = show.browseId; %>
+          <% if (browseId) { %>
+            <div class="podcast-card" data-browse-id="<%= browseId %>" onclick="navigateTo('/spotify/podcast/<%= browseId %>')">
+              <div class="card-img-wrap">
+                <img src="<%= show.thumbnail %>" alt="<%= show.title %>" onerror="recoverThumbnail(this)">
+                <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+              </div>
+              <div class="card-title"><%= show.title %></div>
+              <div class="card-subtitle"><%= show.artist || 'Podcast Show' %></div>
+            </div>
+          <% } %>
+        <% }); %>
+      <% } else { %>
+        <div class="no-podcasts-msg">
+          <p>No podcasts found. Try searching above to find your favorite audio show.</p>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
