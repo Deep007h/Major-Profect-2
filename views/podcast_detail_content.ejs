@@ -1,0 +1,54 @@
+<div class="podcast-detail-page">
+  <!-- Header Banner -->
+  <div class="podcast-detail-header-banner" style="background-image: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, #121212 100%), url('<%= podcastData.banner || podcastData.thumbnail %>');">
+    <div class="podcast-detail-avatar-wrap">
+      <img src="<%= podcastData.thumbnail %>" alt="<%= podcastData.name %>" onerror="recoverThumbnail(this)">
+    </div>
+    <div class="podcast-detail-header-info">
+      <span class="podcast-badge">Podcast Show</span>
+      <h1 class="podcast-detail-name"><%= podcastData.name %></h1>
+      <% if (podcastData.monthlyListeners) { %>
+        <p class="podcast-detail-listeners"><%= podcastData.monthlyListeners %></p>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="podcast-detail-body">
+    <!-- Play Action Row -->
+    <div class="podcast-action-row" style="margin-bottom: 24px;">
+      <% if (podcastData.popularSongs && podcastData.popularSongs.length > 0) { %>
+        <button class="podcast-play-btn" id="btnPlayPodcast" title="Play">
+          <i class="fa-solid fa-play"></i> Play Show
+        </button>
+      <% } %>
+    </div>
+
+    <!-- Episode Listing -->
+    <div class="podcast-episodes-section">
+      <h2>All Episodes</h2>
+      <div class="tracks-table">
+        <% const episodes = podcastData.popularSongs || podcastData.tracks || []; %>
+        <% if (episodes.length > 0) { %>
+          <% episodes.forEach(function(ep, index) { %>
+            <div class="track-row podcast-episode-row" data-video-id="<%= ep.videoId %>" data-title="<%= ep.title %>" data-artist="<%= ep.artists || podcastData.name %>" data-thumbnail="<%= ep.thumbnail %>">
+              <div class="track-number">
+                <span class="track-num-text"><%= index + 1 %></span>
+                <button class="track-play-icon"><i class="fa-solid fa-play"></i></button>
+              </div>
+              <div class="track-title-col">
+                <img class="track-img" src="<%= ep.thumbnail %>" alt="<%= ep.title %>" onerror="recoverThumbnail(this)">
+                <div class="track-title-info">
+                  <span class="track-title-text"><%= ep.title %></span>
+                  <span class="track-artists-text"><%= ep.artists || podcastData.name %></span>
+                </div>
+              </div>
+              <div class="track-duration"><%= ep.duration || '3:30' %></div>
+            </div>
+          <% }); %>
+        <% } else { %>
+          <div class="no-episodes-msg">No episodes listed for this podcast yet.</div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

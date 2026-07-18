@@ -1,17 +1,13 @@
 <% if (locals.layout === false) { %>
-  <%- include('index_content.ejs') %>
+  <%- include('album_content.ejs') %>
 <% } else { %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pulse - Web Player: Music for every Moment</title>
-  <meta name="description" content="pulse Web Player - Listen to music for free. Play your favorite songs, discover new tracks, and build playlists.">
+  <title><%= albumData.title || 'Album' %> | MusicKey</title>
   <link rel="icon" type="image/png" href="/assets/main-logo.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,79 +15,23 @@
   <link rel="stylesheet" href="/style.css?v=4.5">
 </head>
 <body data-user-logged-in="<%= locals.user ? 'true' : 'false' %>">
-  <!-- Flash Messages -->
-  <% if (success && success.length > 0) { %>
-    <div class="flash-container">
-      <% success.forEach(msg => { %>
-        <div class="alert alert-success" role="alert">
-          <i class="fa-solid fa-circle-check"></i>
-          <span><%= msg %></span>
-          <button type="button" class="alert-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-      <% }); %>
-    </div>
-  <% } %>
-  <% if (error && error.length > 0) { %>
-    <div class="flash-container">
-      <% error.forEach(msg => { %>
-        <div class="alert alert-error" role="alert">
-          <i class="fa-solid fa-circle-exclamation"></i>
-          <span><%= msg %></span>
-          <button type="button" class="alert-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-      <% }); %>
-    </div>
-  <% } %>
-
   <div class="app-container">
-    <!-- ===== TOP BAR ===== -->
     <header class="top-bar">
       <div class="top-bar-left">
-        <a href="/spotify" class="spotify-logo-link" title="pulse">
-          <svg viewBox="0 0 24 24" height="32" width="32" fill="currentColor" class="spotify-logo">
-            <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.892-.982-.336.076-.67-.135-.746-.47-.077-.337.135-.67.472-.747 3.854-.88 7.15-.508 9.818 1.127.294.18.387.563.208.865zm1.224-2.723c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.078-1.182-.413.125-.85-.107-.978-.52-.128-.414.107-.85.52-.978 3.66-1.11 8.225-.565 11.35 1.354.366.226.486.707.26 1.066zm.105-2.81c-3.263-1.937-8.643-2.12-11.758-1.173-.5.152-1.025-.13-1.177-.63-.153-.5.13-1.026.63-1.178 3.614-1.098 9.544-.886 13.3 1.344.45.267.6.845.333 1.295-.266.45-.845.6-1.295.333z"/>
-          </svg>
+        <a href="/spotify" class="spotify-logo-link" title="MusicKey">
+          <svg viewBox="0 0 24 24" height="32" width="32" fill="#fff" class="spotify-logo"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.565.387-.86.207-2.377-1.454-5.37-1.783-8.892-.982-.336.076-.67-.135-.746-.47-.077-.337.135-.67.472-.747 3.854-.88 7.15-.508 9.818 1.127.294.18.387.563.208.865z"/></svg>
         </a>
       </div>
-
       <div class="top-bar-center">
-        <a href="/spotify" class="home-btn" title="Home" id="homeBtn">
-          <i class="fa-solid fa-house"></i>
-        </a>
-        <div class="search-wrap">
-          <form class="search-box" onsubmit="return handleSearch(event)">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" placeholder="What do you want to play?" autocomplete="off">
-            <span class="search-divider"></span>
-            <button type="button" class="browse-btn" title="Browse">
-              <svg viewBox="0 0 24 24" height="24" width="24" fill="currentColor">
-                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-1 12H6v-2h12v2zm0-4H6V7h12v4z"/>
-              </svg>
-            </button>
-          </form>
-          <div class="search-results-dropdown" id="searchResults"></div>
-        </div>
+        <a href="/spotify" class="home-btn" title="Home"><i class="fa-solid fa-house"></i></a>
+        <div class="search-wrap"><form class="search-box" onsubmit="return handleSearch(event)"><i class="fa-solid fa-magnifying-glass search-icon"></i><input id="searchInput" type="text" placeholder="What do you want to play?" autocomplete="off"><span class="search-divider"></span><button type="button" class="browse-btn"><i class="fa-solid fa-book"></i></button></form><div class="search-results-dropdown" id="searchResults"></div></div>
       </div>
-
       <div class="top-bar-right">
-        <% if (user) { %>
-          <button class="explore-btn" onclick="window.location.href='#'">Explore Premium</button>
-          <button class="install-btn"><i class="fa-regular fa-circle-down"></i> Install App</button>
-          <button class="icon-btn" title="Notifications"><i class="fa-regular fa-bell"></i></button>
-          <button class="icon-btn" title="Social Feed"><i class="fa-solid fa-user-group"></i></button>
-          <a href="/spotify/logout" class="profile-avatar" title="<%= user.username %> (Click to Log Out)">
-            <%= user.username.charAt(0).toUpperCase() %>
-          </a>
-        <% } else { %>
-          <a href="/spotify/signup" class="signup-link">Sign up</a>
-          <a href="/spotify/login" class="login-btn">Log in</a>
-        <% } %>
+        <% if (locals.user) { %><a href="/spotify/logout" class="profile-avatar"><%= locals.user.username.charAt(0).toUpperCase() %></a><% } else { %><a href="/spotify/signup" class="signup-link">Sign up</a><a href="/spotify/login" class="login-btn">Log in</a><% } %>
       </div>
     </header>
 
-    <!-- ===== MAIN AREA (sidebar + content) ===== -->
     <div class="main-area">
-      <!-- ===== SIDEBAR ===== -->
       <aside class="sidebar">
         <div class="sidebar-section sidebar-library-section">
           <div class="sidebar-library-header">
@@ -136,7 +76,6 @@
             </span>
           </div>
         </div>
-
         <div class="sidebar-section sidebar-library-body">
           <% if (!locals.user) { %>
             <div class="sidebar-cta-card">
@@ -193,8 +132,9 @@
                 <% }) %>
               <% } %>
             <% } else { %>
-              <!-- Guest fallback: show allListings -->
-              <% for(let listing of allListings) { %>
+              <!-- Guest fallback: show allListings (or empty if listings not defined in context) -->
+              <% const displayList = (locals.allListings) ? allListings : []; %>
+              <% for(let listing of displayList) { %>
                 <% const artwork = listing.videoId ? `https://i.ytimg.com/vi/${listing.videoId}/hqdefault.jpg` : (listing.image || ''); %>
                 <div class="sidebar-playlist-item" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>" data-image="<%= artwork %>">
                   <img src="<%= artwork %>" data-video-id="<%= listing.videoId || '' %>" alt="" onerror="recoverThumbnail(this)">
@@ -207,103 +147,15 @@
             <% } %>
           </div>
         </div>
-
-        <div class="sidebar-footer">
-          <div class="footer-links">
-            <a href="#">Legal</a>
-            <a href="#">Safety &amp; Privacy Center</a>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Cookies</a>
-          </div>
-          <div class="footer-links">
-            <a href="#">About Ads</a>
-            <a href="#">Accessibility</a>
-          </div>
-          <a href="#" class="footer-cookies-link">Cookies</a>
-          <button class="language-btn">
-            <i class="fa-solid fa-globe"></i> English
-          </button>
-        </div>
       </aside>
 
-      <!-- ===== MAIN CONTENT ===== -->
-      <main class="main-content" id="mainContent">
-        <%- include('index_content.ejs') %>
+      <main class="main-content album-page-content" id="mainContent">
+        <%- include('album_content.ejs', { albumData }) %>
       </main>
-
-      <!-- ===== NOW PLAYING PANEL (right sidebar, hidden by default) ===== -->
-      <aside class="now-playing-panel" id="nowPlayingPanel">
-        <div class="np-header">
-          <span class="np-header-title" id="npArtistName"></span>
-          <button class="np-close-btn" id="npCloseBtn" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div class="np-artist-image-wrap">
-          <img src="" alt="" id="npArtistImg" class="np-artist-img" onerror="recoverThumbnail(this)">
-          <button class="np-follow-btn">Follow</button>
-        </div>
-        <div class="np-song-info">
-          <div class="np-song-title" id="npSongTitle"></div>
-          <div class="np-song-artists" id="npSongArtists"></div>
-          <button class="np-add-btn" title="Add to library"><i class="fa-solid fa-circle-plus"></i></button>
-        </div>
-        <div class="np-credits-section">
-          <div class="np-credits-header">
-            <span>Credits</span>
-            <a href="#" class="show-all">Show all</a>
-          </div>
-          <div class="np-credits-list" id="npCreditsList">
-            <!-- Credits populated by JS -->
-          </div>
-        </div>
-        <div class="np-queue-section">
-          <div class="np-queue-header">
-            <span>Next in queue</span>
-            <a href="#" class="show-all">Open queue</a>
-          </div>
-          <div class="np-queue-list" id="npQueueList">
-            <!-- Queue populated by JS -->
-          </div>
-        </div>
-      </aside>
-
-      <!-- ===== QUEUE PANEL (right sidebar, hidden by default) ===== -->
-      <aside class="queue-panel" id="queuePanel">
-        <div class="q-header">
-          <span class="q-header-title">Queue</span>
-          <button class="q-close-btn" id="qCloseBtn" title="Close">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-        <div class="q-content">
-          <div class="q-section">
-            <h3 class="q-section-title">Now playing</h3>
-            <div class="q-now-playing-item" id="qNowPlayingItem">
-              <!-- Current song populated by JS -->
-            </div>
-          </div>
-          <div class="q-section">
-            <h3 class="q-section-title" id="qNextFromHeader">Next from:</h3>
-            <div class="q-list" id="qList">
-              <!-- Upcoming queue list populated by JS -->
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
 
-    <!-- ===== PREVIEW BANNER ===== -->
-    <% if (!locals.user) { %>
-    <div class="preview-banner">
-      <div class="banner-content">
-        <p class="banner-title">Preview of pulse</p>
-        <p class="banner-subtitle">Sign up to get unlimited songs and podcasts with occasional ads. No credit card needed.</p>
-      </div>
-      <button class="btn-signup-free" onclick="window.location.href='/spotify/signup'">Sign up free</button>
-    </div>
-    <% } %>
-
+    <!-- ===== PLAYER BAR ===== -->
+    <% const cover = albumData.thumbnail || albumData.tracks[0]?.thumbnail || ''; %>
     <!-- ===== PLAYER BAR ===== -->
     <div class="player-bar">
       <div class="player-left">

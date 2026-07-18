@@ -1,0 +1,135 @@
+<span id="spaPageTitle" style="display:none;" data-title="Spotify - Web Player: Music for every Moment"></span>
+        <!-- Filter Pills -->
+        <div class="filter-pills">
+          <button class="pill active">All</button>
+          <button class="pill">Music</button>
+          <button class="pill">Podcasts</button>
+        </div>
+
+        <!-- Quick Access Grid -->
+        <div class="content-section" style="padding-top: 8px;">
+          <h2 style="font-size: 28px; font-weight: 700; color: #fff; margin: 16px 0 12px 0;" id="greeting">Good morning</h2>
+          <div class="quick-access-grid">
+            <div class="qa-card" data-video-id="cWIGUPQqnSk" data-title="2024 Rap Up" data-artist="Prem Dhillon" data-image="/assets/card3img.jpeg">
+              <img src="/assets/card3img.jpeg" alt="">
+              <span class="qa-title">2024 Rap Up</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCSmK5WX5U4gdtebWjoL81og" data-title="Karan Aujla" data-type="artist">
+              <img src="https://lh3.googleusercontent.com/k7sgqqcV5VScaMZtTmS8W_tfouLVBpgyJII0epYE2Vjw1-zzhGgUCV51aHxZn6cmZKKJgUfNlIVpZg=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Karan Aujla</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCJ2m-WpROlZCiZZID9r7NSQ" data-title="Diljit Dosanjh" data-type="artist">
+              <img src="https://yt3.googleusercontent.com/7EYXXMXY594V8y4sZT2aawmdKgDAGTu5jNm9C-HpR3jY9cZJ0NMxS__nZKBdWZ1PUpJPjc2BAA=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Diljit Dosanjh</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UClYV6hHlupm_S_ObS1W-DYw" data-title="The Weeknd" data-type="artist">
+              <img src="https://lh3.googleusercontent.com/U-SAmNOu4TynE818gLCfKsuHZ0U5YNEtO9mrjSI9WCCKERs98LzrCal5kajBBTQNwdcisoB2Bn-pHp4=w544-h544-l90-rj" alt="">
+              <span class="qa-title">The Weeknd</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCDoxhZGShhNvN4Bc3nWZptg" data-title="Shubh" data-type="artist">
+              <img src="https://lh3.googleusercontent.com/xGLCqdWB64eQARHXZdE4ut8VkNK7UnkrRKmQ4Bnx5ksOSmXctLUiEzjd4fh48EdpslwA219yNJnKU3k=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Shubh</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCIOXXUXQ8y5ivei97JkiBAw" data-title="Sidhu Moose Wala" data-type="artist">
+              <img src="https://yt3.ggpht.com/ytc/AIdro_kiQJ0Hhp0O-tdaY1dy81-gSNujjccUlWstnpFr686ZlMk=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Sidhu Moose Wala</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCPC0L1d253x-KuMNwa05TpA" data-title="Taylor Swift" data-type="artist">
+              <img src="https://yt3.googleusercontent.com/RCpTA6EXJQyjVFDosWOKa2SMmqkua_lA9mHPDWWciLwgqpZLz-k8rXWRF_367trrQ7up9BUwCbk6kRk=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Taylor Swift</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+            <div class="qa-card" data-browse-id="UCZn4r7heNOPY-C43YIywnVA" data-title="Bruno Mars" data-type="artist">
+              <img src="https://lh3.googleusercontent.com/hnefGBrazRhn4Z92bdSZBUENl40ONjRiVDsmZKZh-WZ2iCKE-2c7KKR7SNcZfzLHoRyB3E6as8L87YA=w544-h544-l90-rj" alt="">
+              <span class="qa-title">Bruno Mars</span>
+              <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trending / Browse sections (populated by JS) -->
+        <div id="trendingContainer"></div>
+
+        <!-- User's saved songs -->
+        <div class="content-section" id="yourSongsSection">
+          <div class="content-section-header">
+            <h2>Your Songs</h2>
+            <a href="/spotify/add" class="show-all">Add song</a>
+          </div>
+          <div class="card-row" id="songPanel">
+            <% for(let listing of allListings) { %>
+              <% const artwork = listing.videoId ? `https://i.ytimg.com/vi/${listing.videoId}/hqdefault.jpg` : (listing.image || ''); %>
+              <div class="song-card" <% if (listing.videoId) { %>data-video-id="<%= listing.videoId %>"<% } %> data-title="<%= listing.title %>" data-artist="<%= listing.artist %>">
+                <div class="card-img-wrap">
+                  <img src="<%= artwork %>" data-video-id="<%= listing.videoId || '' %>" alt="<%= listing.title %>">
+                  <button class="play-btn-overlay"><i class="fa-solid fa-play"></i></button>
+                </div>
+                <div class="card-title"><%= listing.title %></div>
+                <div class="card-subtitle"><%= listing.artist %></div>
+                <form action="/spotify/song/<%= listing._id %>?_method=DELETE" method="POST" style="display:none;">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            <% } %>
+            <% if (allListings.length === 0) { %>
+              <div class="no-songs-msg">No songs yet. Search above to find any song on YouTube Music!</div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- ===== SPOTIFY FOOTER ===== -->
+        <footer class="spotify-footer">
+          <div class="footer-columns">
+            <div class="footer-col">
+              <h4>Company</h4>
+              <a href="#">About</a>
+              <a href="#">Jobs</a>
+              <a href="#">For the Record</a>
+            </div>
+            <div class="footer-col">
+              <h4>Communities</h4>
+              <a href="#">For Artists</a>
+              <a href="#">Developers</a>
+              <a href="#">Advertising</a>
+              <a href="#">Investors</a>
+              <a href="#">Vendors</a>
+            </div>
+            <div class="footer-col">
+              <h4>Useful links</h4>
+              <a href="#">Support</a>
+              <a href="#">Free Mobile App</a>
+            </div>
+            <div class="footer-col">
+              <h4>Spotify Plans</h4>
+              <a href="#">Premium Individual</a>
+              <a href="#">Premium Duo</a>
+              <a href="#">Premium Family</a>
+              <a href="#">Premium Student</a>
+            </div>
+            <div class="footer-socials">
+              <a href="#" class="social-btn"><i class="fa-brands fa-instagram"></i></a>
+              <a href="#" class="social-btn"><i class="fa-brands fa-twitter"></i></a>
+              <a href="#" class="social-btn"><i class="fa-brands fa-facebook"></i></a>
+            </div>
+          </div>
+          <div class="footer-divider"></div>
+          <div class="footer-bottom">
+            <div class="footer-links">
+              <a href="#">Legal</a>
+              <a href="#">Safety &amp; Privacy Center</a>
+              <a href="#">Privacy Policy</a>
+              <a href="#">Cookies</a>
+              <a href="#">About Ads</a>
+              <a href="#">Accessibility</a>
+            </div>
+            <div class="footer-copyright">
+              &copy; 2026 Spotify AB
+            </div>
+          </div>
+        </footer>
